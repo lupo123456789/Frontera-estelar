@@ -2166,6 +2166,10 @@ async def unirme_a_nave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
+    # Verificar si ya está en una expedición
+    if user_id in EXPEDICIONES_ACTIVAS:
+        await query.answer("No puedes unirte a una nave mientras estás en expedición.", show_alert=True)
+        return
     anuncio_id = int(query.data.replace("unirme_", ""))
     
     conn = sqlite3.connect('estelar.db')
