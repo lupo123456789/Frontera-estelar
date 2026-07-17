@@ -2086,6 +2086,127 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Usa /start para ver el menu principal.")
 import os
 TOKEN = os.environ.get("TOKEN", "8038564215:AAEDqfNqIEtFUMA4gLT4CJ_NwvKV3FrvVk8")
+# ============ PANEL DE ADMIN ============
+
+ADMIN_ID = 1325693224  # CAMBIA ESTO POR TU ID DE TELEGRAM
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ No tienes acceso a este comando.")
+        return
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    # Total jugadores
+    c.execute("SELECT COUNT(*) FROM personajes")
+    total_jugadores = c.fetchone()[0]
+    
+    # Total naves
+    c.execute("SELECT COUNT(*) FROM naves")
+    total_naves = c.fetchone()[0]
+    
+    # Oro en circulación
+    c.execute("SELECT SUM(oro) FROM personajes")
+    oro_total = c.fetchone()[0] or 0
+    
+    # EST en circulación
+    c.execute("SELECT SUM(balance) FROM tokens")
+    est_total = c.fetchone()[0] or 0
+    
+    # Expediciones completadas
+    c.execute("SELECT SUM(exp_completadas) FROM estadisticas")
+    exp_total = c.fetchone()[0] or 0
+    
+    # Últimos 10 jugadores
+    c.execute("SELECT nombre, oficio, nivel, oro FROM personajes ORDER BY user_id DESC LIMIT 10")
+    ultimos = c.fetchall()
+    
+    conn.close()
+    
+    texto = "🔐 PANEL DE ADMIN\n\n"
+    texto += f"👥 Jugadores: {total_jugadores}\n"
+    texto += f"🛸 Naves: {total_naves}\n"
+    texto += f"💰 Oro en circulación: {oro_total}\n"
+    texto += f"🪙 EST en circulación: {est_total}\n"
+    texto += f"🚀 Expediciones: {exp_total}\n\n"
+    
+    if ultimos:
+        texto += "📋 ÚLTIMOS JUGADORES:\n"
+        for j in ultimos:
+            texto += f"  • {j[0]} - {j[1].capitalize()} | Nv.{j[2]} | 💰{j[3]}\n"
+    
+    await update.message.reply_text(texto)
+
+async def admin_jugadores(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    if user_id != ADMIN_ID:
+        return
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT nombre, oficio, nivel, oro, experiencia FROM personajes ORDER BY nivel DESC")
+    jugadores = c.fetchall()
+    conn.close()
+    
+    if not jugadores:
+        await update.message.reply_text("No hay jugadores.")
+        return
+    
+    texto = "📋 TODOS LOS JUGADORES:\n\n"
+    for i, j in enumerate(jugadores, 1):
+        texto += f"{i}. {j[0]} - {j[1].capitalize()} | Nv.{j[2]} | 💰{j[3]} | ✨{j[4]}\n"
+    
+    # Dividir en partes si es muy largo
+    if len(texto) > 4000:
+        partes = [texto[i:i+4000] for i in range(0, len(texto), 4000)]
+        for parte in partes:
+            await update.message.reply_text(parte)
+    else:
+        await update.message.reply_text(texto)
+
+async def admin_naves(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    if user_id != ADMIN_ID:
+        return
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT naves.nombre, naves.tipo, naves.nivel, personajes.nombre FROM naves JOIN personajes ON naves.dueno_id = personajes.user_id ORDER BY naves.id DESC LIMIT 20")
+    naves = c.fetchall()
+    conn.close()
+    
+    if not naves:
+        await update.message.reply_text("No hay naves.")
+        return
+    
+    texto = "🛸 ÚLTIMAS 20 NAVES:\n\n"
+    for n in naves:
+        texto += f"  • {n[0]} ({n[1]}) Nv.{n[2]} - Dueño: {n[3]}\n"
+    
+    await update.message.reply_text(texto)
+
+async def admin_dar_oro(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    if user_id != ADMIN_ID:
+        return
+    
+    args = context.args
+    if len(args) < 2:
+        await update.message.reply_text("Uso: /dar_oro @usuario cantidad")
+        return
+    
+    # Simplificado: solo para pruebas
+    try:
+        cantidad = int(args[-1])
+        await update.message.reply_text(f"Comando en desarrollo. Cantidad: {cantidad}")
+    except:
+        await update.message.reply_text("Cantidad inválida.")
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
@@ -2141,6 +2262,10 @@ app.add_handler(CallbackQueryHandler(ver_tokens, pattern="menu_tokens"))
 app.add_handler(CommandHandler("stats_p", ver_stats_personaje))
 app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="menu_stats_p"))
 app.add_handler(CallbackQueryHandler(mejorar_stat, pattern="mejorar_"))
+app.add_handler(CommandHandler("admin", admin_panel))
+app.add_handler(CommandHandler("jugadores", admin_jugadores))
+app.add_handler(CommandHandler("naves_admin", admin_naves))
+app.add_handler(CommandHandler("dar_oro", admin_dar_oro))
 print("Bot iniciado...")
 app.run_polling()
 
