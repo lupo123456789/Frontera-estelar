@@ -288,22 +288,22 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
     c.execute("INSERT INTO personajes (user_id, nombre, oficio) VALUES (?, ?, ?)", (user_id, nombre, oficio))
-# Dar 25 EST si vino de referido
+    # Dar 25 EST si vino de referido
     c.execute("SELECT * FROM referidos WHERE user_id=?", (user_id,))
-if c.fetchone():
-    c.execute("SELECT * FROM tokens WHERE user_id=?", (user_id,))
     if c.fetchone():
-        c.execute("UPDATE tokens SET balance = balance + 25, total_ganado = total_ganado + 25 WHERE user_id=?", (user_id,))
-    else:
-        c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, 25, 25)", (user_id,))
+        c.execute("SELECT * FROM tokens WHERE user_id=?", (user_id,))
+        if c.fetchone():
+            c.execute("UPDATE tokens SET balance = balance + 25, total_ganado = total_ganado + 25 WHERE user_id=?", (user_id,))
+        else:
+            c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, 25, 25)", (user_id,))
     conn.commit()
     conn.close()
-        try:
-             with open(f"img/personajes/{oficio}.jpg", "rb") as foto:
-                await context.bot.send_photo(chat_id=user_id, photo=foto, caption=f"{nombre} - {oficio.capitalize()}\n\nPersonaje creado!\nOro inicial: 500")
-        except:
-            pass
-    
+    try:
+        with open(f"img/personajes/{oficio}.jpg", "rb") as foto:
+            await context.bot.send_photo(chat_id=user_id, photo=foto, caption=f"{nombre} - {oficio.capitalize()}\n\nPersonaje creado!\nOro inicial: 500")
+    except:
+        pass
+    await context.bot.send_message(chat_id=user_id, text=f"{nombre} - {oficio.capitalize()} creado.\nOro: 500")
     teclado = InlineKeyboardMarkup([[InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
 
