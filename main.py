@@ -1,7 +1,7 @@
 import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
-
+import json
 def init_db():
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
@@ -2270,9 +2270,37 @@ from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    data = update.message.web_app_data.data
+    data = json.loads(update.message.web_app_data.data)
+    accion = data.get('accion', '')
     
-    await update.message.reply_text(f"Datos recibidos de la web: {data}")
+    if accion == 'stats':
+        await stats(update, context)
+    elif accion == 'naves':
+        await nave_menu(update, context)
+    elif accion == 'comprar_nave':
+        await nave_menu(update, context)
+    elif accion == 'tripulacion':
+        await ver_tripulacion(update, context)
+    elif accion == 'tablon':
+        await tablon(update, context)
+    elif accion == 'publicar':
+        await publicar(update, context)
+    elif accion == 'tokens':
+        await ver_tokens(update, context)
+    elif accion == 'pool':
+        await info_pool(update, context)
+    elif accion == 'expedicion':
+        await update.message.reply_text("🌌 Usa el menú de Expediciones en el chat para iniciar misiones con tu tripulación.")
+    elif accion == 'reparar':
+        await reparar_nave(update, context)
+    elif accion == 'cancelar':
+        await cancelar_publicacion(update, context)
+    elif accion == 'estadisticas':
+        await estadisticas_exp(update, context)
+    elif accion == 'stats_p':
+        await ver_stats_personaje(update, context)
+    else:
+        await update.message.reply_text(f"📱 Acción recibida desde la Mini App: {accion}")
 
 app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
 print("Bot iniciado...")
