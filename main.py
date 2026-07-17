@@ -1276,7 +1276,9 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"Te notificare cuando termine.\n"
         f"Usa /expedicion para ver el progreso."
     )
-    
+    # Posible encuentro PvP durante la expedición
+if sector_id != "high":
+    asyncio.create_task(encuentro_pvp(user_id, context, sector_id, None))
     asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
 
 async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1373,7 +1375,206 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
     )
     
     asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
+# ============ PVP EN EXPEDICIONES ============
 
+async def encuentro_pvp(user_id, context, sector_id, exp_data):
+    """Posible encuentro PvP durante expedición en Low/Null Sec"""
+    
+    if sector_id == "high":
+        return
+    
+    probabilidad = 25 if sector_id == "low" else 50
+    
+    if random.randint(1, 100) > probabilidad:
+        return
+    
+    # Buscar otro jugador en expedición en el mismo sector
+    posibles = []
+    for uid, exp in EXPEDICIONES_ACTIVAS.items():
+        if uid != user_id and exp["sector"] == sector_id:
+            posibles.append(uid)
+    
+    if not posibles:
+        return
+    
+    objetivo_id = random.choice(posibles)
+    
+    # Obtener datos del atacante
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT nombre, oficio, oro, nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    atacante = c.fetchone()
+    
+    c.execute("SELECT balance FROM tokens WHERE user_id=?", (user_id,))
+    est_ataque = c.fetchone()
+    est_atacante = est_ataque[0] if est_ataque else 0
+    
+    c.execute("SELECT nombre, oficio, oro, nave_activa FROM personajes WHERE user_id=?", (objetivo_id,))
+    defensor = c.fetchone()
+    
+    c.execute("SELECT balance FROM tokens WHERE user_id=?", (objetivo_id,))
+    est_def = c.fetchone()
+    est_defensor = est_def[0] if est_def else 0
+    conn.close()
+    
+    if not atacante or not defensor:
+        return
+    
+    # Calcular poderes
+    stats_atacante = obtener_stats_jugador(user_id)
+    stats_defensor = obtener_stats_jugador(objetivo_id)
+    
+    poder_ataque = (stats_atacante["precision"] + stats_atacante["velocidad"]) if stats_atacante else 20
+    poder_defensa = (stats_defensor["defensa"] + stats_defensor["precision"]) if stats_defensor else 20
+    
+    # Guardar encuentro pendiente
+    if not hasattr(context, 'encuentros_pvp'):
+        context.encuentros_pvp = {}
+    
+    context.encuentros_pvp[user_id] = {
+        "objetivo_id": objetivo_id,
+        "objetivo_nombre": defensor[0],
+        "poder_ataque": poder_ataque,
+        "poder_defensa": poder_defensa,
+        "oro_defensor": defensor[2],
+        "est_defensor": est_defensor,
+        "oro_atacante": atacante[2],
+        "est_atacante": est_atacante,
+        "sector": sector_id
+    }
+    
+    # Notificar al atacante
+    teclado = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⚔️ ATACAR", callback_data=f"pvp_atacar_{objetivo_id}"),
+         InlineKeyboardButton("🚶 SEGUIR", callback_data="pvp_ignorar")]
+    ])
+    
+    try:
+        await context.bot.send_message(
+            user_id,
+            f"🚨 ¡CONTACTO ENEMIGO DETECTADO! 🚨\n\n"
+            f"Se ha detectado la nave de *{defensor[0]}* en el sector.\n"
+            f"Está realizando una expedición.\n\n"
+            f"⚡ Tu poder de ataque: *{poder_ataque}*\n"
+            f"🛡️ Su poder de defensa: *{poder_defensa}*\n\n"
+            f"💰 Su oro: {defensor[2]} | 🪙 Su EST: {est_defensor}\n\n"
+            f"¿Qué deseas hacer?",
+            parse_mode='Markdown',
+            reply_markup=teclado
+        )
+    except:
+        pass
+
+async def pvp_atacar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    
+    if not hasattr(context, 'encuentros_pvp') or user_id not in context.encuentros_pvp:
+        await query.edit_message_text("El encuentro ha expirado.")
+        return
+    
+    datos = context.encuentros_pvp.pop(user_id)
+    objetivo_id = datos["objetivo_id"]
+    
+    # Resolver combate
+    if datos["poder_ataque"] > datos["poder_defensa"]:
+        # VICTORIA ATACANTE
+        sector = SECTORES[datos["sector"]]
+        pct_oro = 0.20 if datos["sector"] == "low" else 0.30
+        pct_est = 0.10 if datos["sector"] == "low" else 0.20
+        
+        oro_robado = int(datos["oro_defensor"] * pct_oro)
+        est_robado = round(datos["est_defensor"] * pct_est, 1)
+        
+        conn = sqlite3.connect('estelar.db')
+        c = conn.cursor()
+        
+        # Quitar al defensor
+        c.execute("UPDATE personajes SET oro = oro - ? WHERE user_id=?", (oro_robado, objetivo_id))
+        c.execute("UPDATE tokens SET balance = balance - ? WHERE user_id=?", (est_robado, objetivo_id))
+        
+        # Dar al atacante
+        c.execute("UPDATE personajes SET oro = oro + ? WHERE user_id=?", (oro_robado, user_id))
+        c.execute("UPDATE tokens SET balance = balance + ?, total_ganado = total_ganado + ? WHERE user_id=?",
+                  (est_robado, est_robado, user_id))
+        
+        conn.commit()
+        conn.close()
+        
+        await query.edit_message_text(
+            f"⚔️ ¡VICTORIA!\n\n"
+            f"Has derrotado a {datos['objetivo_nombre']}\n\n"
+            f"💰 Oro robado: *{oro_robado}*\n"
+            f"🪙 EST robado: *{est_robado}*\n\n"
+            f"Tu expedición continúa...",
+            parse_mode='Markdown'
+        )
+        
+        try:
+            await context.bot.send_message(
+                objetivo_id,
+                f"🚨 ¡HAS SIDO ATACADO! 🚨\n\n"
+                f"Un jugador te ha emboscado durante tu expedición.\n\n"
+                f"💰 Oro perdido: *{oro_robado}*\n"
+                f"🪙 EST perdido: *{est_robado}*\n\n"
+                f"Tu nave ha recibido daños.",
+                parse_mode='Markdown'
+            )
+        except:
+            pass
+    else:
+        # VICTORIA DEFENSOR
+        pct_oro = 0.15
+        pct_est = 0.05
+        
+        oro_perdido = int(datos["oro_atacante"] * pct_oro)
+        est_perdido = round(datos["est_atacante"] * pct_est, 1)
+        
+        conn = sqlite3.connect('estelar.db')
+        c = conn.cursor()
+        
+        c.execute("UPDATE personajes SET oro = oro - ? WHERE user_id=?", (oro_perdido, user_id))
+        c.execute("UPDATE tokens SET balance = balance - ? WHERE user_id=?", (est_perdido, user_id))
+        
+        c.execute("UPDATE personajes SET oro = oro + ? WHERE user_id=?", (oro_perdido, objetivo_id))
+        c.execute("UPDATE tokens SET balance = balance + ? WHERE user_id=?", (est_perdido, objetivo_id))
+        
+        conn.commit()
+        conn.close()
+        
+        await query.edit_message_text(
+            f"🛡️ ¡DERROTA!\n\n"
+            f"¡{datos['objetivo_nombre']} te ha vencido!\n\n"
+            f"💰 Oro perdido: *{oro_perdido}*\n"
+            f"🪙 EST perdido: *{est_perdido}*\n\n"
+            f"Tu nave ha recibido daños. La expedición continúa...",
+            parse_mode='Markdown'
+        )
+        
+        try:
+            await context.bot.send_message(
+                objetivo_id,
+                f"🛡️ ¡TE HAS DEFENDIDO!\n\n"
+                f"Un jugador intentó atacarte y has ganado.\n\n"
+                f"💰 Oro ganado: *{oro_perdido}*\n"
+                f"🪙 EST ganado: *{est_perdido}*",
+                parse_mode='Markdown'
+            )
+        except:
+            pass
+
+async def pvp_ignorar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    
+    if hasattr(context, 'encuentros_pvp') and user_id in context.encuentros_pvp:
+        context.encuentros_pvp.pop(user_id)
+    
+    await query.edit_message_text(
+        "🚶 Has decidido seguir de largo.\n\nTu expedición continúa sin interrupciones."
+    )
 async def finalizar_expedicion(user_id, tipo, context):
     if tipo in TIPOS_EXPEDICION:
         datos = TIPOS_EXPEDICION[tipo]
@@ -2266,6 +2467,8 @@ app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CommandHandler("jugadores", admin_jugadores))
 app.add_handler(CommandHandler("naves_admin", admin_naves))
 app.add_handler(CommandHandler("dar_oro", admin_dar_oro))
+app.add_handler(CallbackQueryHandler(pvp_atacar, pattern="pvp_atacar_"))
+app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
