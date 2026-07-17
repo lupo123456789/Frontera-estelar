@@ -298,12 +298,11 @@ if c.fetchone():
         c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, 25, 25)", (user_id,))
     conn.commit()
     conn.close()
-    
         try:
-        with open(f"img/personajes/{oficio}.jpg", "rb") as foto:
+             with open(f"img/personajes/{oficio}.jpg", "rb") as foto:
                 await context.bot.send_photo(chat_id=user_id, photo=foto, caption=f"{nombre} - {oficio.capitalize()}\n\nPersonaje creado!\nOro inicial: 500")
         except:
-        await context.bot.send_message(chat_id=user_id, text=f"{nombre} - {oficio.capitalize()} creado.\nOro: 500")
+            pass
     
     teclado = InlineKeyboardMarkup([[InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
