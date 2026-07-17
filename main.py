@@ -299,10 +299,10 @@ if c.fetchone():
     conn.commit()
     conn.close()
     
-    try:
+        try:
         with open(f"img/personajes/{oficio}.jpg", "rb") as foto:
-            await context.bot.send_photo(chat_id=user_id, photo=foto, caption=f"{nombre} - {oficio.capitalize()}\n\nPersonaje creado!\nOro inicial: 500")
-    except:
+                await context.bot.send_photo(chat_id=user_id, photo=foto, caption=f"{nombre} - {oficio.capitalize()}\n\nPersonaje creado!\nOro inicial: 500")
+        except:
         await context.bot.send_message(chat_id=user_id, text=f"{nombre} - {oficio.capitalize()} creado.\nOro: 500")
     
     teclado = InlineKeyboardMarkup([[InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
