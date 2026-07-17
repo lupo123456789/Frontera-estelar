@@ -2165,6 +2165,7 @@ async def tablon(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unirme_a_nave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    await query.answer("DEBUG: Verificando...", show_alert=True)
     user_id = query.from_user.id
     # Verificar si ya está en una expedición
     if user_id in EXPEDICIONES_ACTIVAS:
