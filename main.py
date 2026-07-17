@@ -1627,7 +1627,7 @@ async def finalizar_expedicion(user_id, tipo, context):
         return
 
     await asyncio.sleep(datos["duracion"])
-
+    print(f"DEBUG: Finalizando expedicion de user {user_id}, tipo {tipo}")
     if user_id not in EXPEDICIONES_ACTIVAS:
         return
 
