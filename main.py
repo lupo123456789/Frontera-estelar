@@ -2266,6 +2266,15 @@ app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CommandHandler("jugadores", admin_jugadores))
 app.add_handler(CommandHandler("naves_admin", admin_naves))
 app.add_handler(CommandHandler("dar_oro", admin_dar_oro))
+from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
+
+async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    data = update.message.web_app_data.data
+    
+    await update.message.reply_text(f"Datos recibidos de la web: {data}")
+
+app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
 print("Bot iniciado...")
 app.run_polling()
 
