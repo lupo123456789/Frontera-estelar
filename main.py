@@ -1669,10 +1669,7 @@ async def finalizar_expedicion(user_id, tipo, context):
             elif "dano" in datos_evento:
                 evento_msg += " La nave ha recibido daños!"
 
-        c.execute("UPDATE personajes SET oro = oro + ?, experiencia = experiencia + ? WHERE user_id=?",
-                  (oro_ganado, exp_ganada, user_id))
-
-# Repartir botín: 50% dueño, 50% tripulación
+        # Repartir botin: 50% dueno, 50% tripulacion
         c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
         nav = c.fetchone()
         nave_id_actual = nav[0] if nav else 0
@@ -1681,33 +1678,33 @@ async def finalizar_expedicion(user_id, tipo, context):
         tripulantes_lista = c.fetchall()
 
         if tripulantes_lista:
-                oro_dueno = int(oro_ganado * 0.5)
-                oro_tripulante = int(oro_ganado * 0.5) // len(tripulantes_lista)
-                exp_dueno = int(exp_ganada * 0.5)
-                exp_tripulante = int(exp_ganada * 0.5) // len(tripulantes_lista)
+            oro_dueno = int(oro_ganado * 0.5)
+            oro_tripulante = int(oro_ganado * 0.5) // len(tripulantes_lista)
+            exp_dueno = int(exp_ganada * 0.5)
+            exp_tripulante = int(exp_ganada * 0.5) // len(tripulantes_lista)
         else:
             oro_dueno = oro_ganado
             oro_tripulante = 0
             exp_dueno = exp_ganada
             exp_tripulante = 0
 
-# Dar oro y exp al dueño
+        # Dar oro y exp al dueno
         c.execute("UPDATE personajes SET oro = oro + ?, experiencia = experiencia + ? WHERE user_id=?",
-        (oro_dueno, exp_dueno, user_id))
+                  (oro_dueno, exp_dueno, user_id))
 
-# Dar oro y exp a cada tripulante
+        # Dar oro y exp a cada tripulante
         for t in tripulantes_lista:
             c.execute("UPDATE personajes SET oro = oro + ?, experiencia = experiencia + ? WHERE user_id=?",
-              (oro_tripulante, exp_tripulante, t[0]))
+                      (oro_tripulante, exp_tripulante, t[0]))
             try:
                 await context.bot.send_message(
-                      chat_id=t[0],
-            text=f"💰 BOTIN RECIBIDO\n\nHas recibido {oro_tripulante} oro y {exp_tripulante} EXP."
-        )
+                    chat_id=t[0],
+                    text=f"💰 BOTIN RECIBIDO\n\nHas recibido {oro_tripulante} oro y {exp_tripulante} EXP."
+                )
             except:
                 pass
 
-# Subir nivel del dueño
+        # Subir nivel del dueno
         c.execute("SELECT experiencia, nivel FROM personajes WHERE user_id=?", (user_id,))
         p = c.fetchone()
         if p and p[0] >= p[1] * 100:
@@ -1715,14 +1712,30 @@ async def finalizar_expedicion(user_id, tipo, context):
                       (p[1] * 100, user_id))
             c.execute("UPDATE stats_personaje SET puntos_libres = puntos_libres + 2 WHERE user_id=?", (user_id,))
 
-# Subir nivel de tripulantes
+        # Subir nivel de tripulantes
         for t in tripulantes_lista:
             c.execute("SELECT experiencia, nivel FROM personajes WHERE user_id=?", (t[0],))
-        pt = c.fetchone()
-        if pt and pt[0] >= pt[1] * 100:
-            c.execute("UPDATE personajes SET nivel = nivel + 1, experiencia = experiencia - ? WHERE user_id=?",
-        (pt[1] * 100, t[0]))
-        c.execute("UPDATE stats_personaje SET puntos_libres = puntos_libres + 2 WHERE user_id=?", (t[0],))
+            pt = c.fetchone()
+            if pt and pt[0] >= pt[1] * 100:
+                c.execute("UPDATE personajes SET nivel = nivel + 1, experiencia = experiencia - ? WHERE user_id=?",
+                          (pt[1] * 100, t[0]))
+                c.execute("UPDATE stats_personaje SET puntos_libres = puntos_libres + 2 WHERE user_id=?", (t[0],))
+
+        # Tokens EST
+        c.execute("SELECT * FROM tokens WHERE user_id=?", (user_id,))
+        if c.fetchone():
+            c.execute("UPDATE tokens SET balance = balance + ?, total_ganado = total_ganado + ? WHERE user_id=?",
+                      (est_ganados, est_ganados, user_id))
+        else:
+            c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, ?, ?)",
+                      (user_id, est_ganados, est_ganados))
+
+        # Estadisticas
+        c.execute("UPDATE estadisticas SET exp_completadas = exp_completadas + 1, racha_actual = racha_actual + 1, total_oro_ganado = total_oro_ganado + ?, total_est_ganado = total_est_ganado + ? WHERE user_id=?",
+                  (oro_ganado, est_ganados, user_id))
+        c.execute("UPDATE estadisticas SET mejor_racha = MAX(mejor_racha, racha_actual) WHERE user_id=? AND racha_actual > mejor_racha", (user_id,))
+
+        # Minerales
         minerales_texto = ""
         if exp["minerales"]:
             mineral = random.choice(["Hierro", "Cobre", "Titanio", "Cristal"])
@@ -1733,29 +1746,18 @@ async def finalizar_expedicion(user_id, tipo, context):
             else:
                 c.execute("INSERT INTO inventario (user_id, recurso, cantidad) VALUES (?, ?, ?)", (user_id, mineral, cantidad))
             minerales_texto = f"\nMinerales: {cantidad}x {mineral}"
+
         mensaje = (
             f"{sector['emoji']} EXPEDICION COMPLETADA ✅\n\n"
             f"Sector: {sector['nombre']}\n"
             f"Tipo: {exp['tipo_nombre']}\n"
             f"Oro total: {oro_ganado}\n"
             f"Tu parte (50%): {oro_dueno} oro | {exp_dueno} EXP\n"
-            f"EST ganados: {est_ganados}{minerales_texto}"
+            f"EST ganados: {est_ganados}{minerales_texto}\n"
             f"Tripulacion: {oro_tripulante} oro c/u | {exp_tripulante} EXP c/u\n"
             f"{evento_msg}\n\n"
             f"Usa /expedicion para otra mision!"
         )
-        c.execute("SELECT * FROM tokens WHERE user_id=?", (user_id,))
-        if c.fetchone():
-            c.execute("UPDATE tokens SET balance = balance + ?, total_ganado = total_ganado + ? WHERE user_id=?",
-                      (est_ganados, est_ganados, user_id))
-        else:
-            c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, ?, ?)",
-                      (user_id, est_ganados, est_ganados))
-
-        c.execute("UPDATE estadisticas SET exp_completadas = exp_completadas + 1, racha_actual = racha_actual + 1, total_oro_ganado = total_oro_ganado + ?, total_est_ganado = total_est_ganado + ? WHERE user_id=?",
-                  (oro_ganado, est_ganados, user_id))
-        c.execute("UPDATE estadisticas SET mejor_racha = MAX(mejor_racha, racha_actual) WHERE user_id=? AND racha_actual > mejor_racha", (user_id,))
-
     else:
         c.execute("UPDATE estadisticas SET exp_falladas = exp_falladas + 1, racha_actual = 0 WHERE user_id=?", (user_id,))
 
@@ -1778,7 +1780,7 @@ async def finalizar_expedicion(user_id, tipo, context):
         if nave_perdida:
             mensaje += "\n\n💀 ¡HAS PERDIDO TU NAVE!"
 
-    # Liberar tripulantes (SIEMPRE, al final)
+    # Liberar tripulantes
     c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
     nav = c.fetchone()
     if nav and nav[0] > 0:
