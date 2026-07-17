@@ -903,7 +903,7 @@ TIPOS_EXPEDICION = {
     "exploracion": {
         "nombre": "Exploracion",
         "requiere": ["piloto"],
-        "duracion": 30,
+        "duracion": 300,
         "oro_base_min": 30,
         "oro_base_max": 80,
         "exp_base": 10,
@@ -913,7 +913,7 @@ TIPOS_EXPEDICION = {
     "mineria": {
         "nombre": "Mineria",
         "requiere": ["piloto", "minero"],
-        "duracion": 45,
+        "duracion": 600,
         "oro_base_min": 20,
         "oro_base_max": 50,
         "exp_base": 25,
@@ -923,7 +923,7 @@ TIPOS_EXPEDICION = {
     "combate": {
         "nombre": "Combate PvE",
         "requiere": ["piloto", "armero"],
-        "duracion": 40,
+        "duracion": 900,
         "oro_base_min": 50,
         "oro_base_max": 150,
         "exp_base": 40,
@@ -933,7 +933,7 @@ TIPOS_EXPEDICION = {
     "gran_expedicion": {
         "nombre": "Gran Expedicion",
         "requiere": ["piloto", "armero", "minero"],
-        "duracion": 60,
+        "duracion": 1200,
         "oro_base_min": 100,
         "oro_base_max": 300,
         "exp_base": 80,
@@ -955,7 +955,7 @@ EXPEDICIONES_RARAS = {
     "caza_recompensa": {
         "nombre": "🎯 Caza de Recompensa",
         "requiere": ["piloto", "armero"],
-        "duracion": 90,
+        "duracion": 1800,
         "oro_base_min": 200,
         "oro_base_max": 500,
         "exp_base": 100,
@@ -966,7 +966,7 @@ EXPEDICIONES_RARAS = {
     "asteroide_legendario": {
         "nombre": "☄️ Asteroide Legendario",
         "requiere": ["piloto", "minero"],
-        "duracion": 120,
+        "duracion": 2400,
         "oro_base_min": 300,
         "oro_base_max": 800,
         "exp_base": 150,
