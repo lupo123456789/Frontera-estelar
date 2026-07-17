@@ -2340,7 +2340,43 @@ TOKEN = os.environ.get("TOKEN", "8038564215:AAEDqfNqIEtFUMA4gLT4CJ_NwvKV3FrvVk8"
 # ============ PANEL DE ADMIN ============
 
 ADMIN_ID = 1325693224  # CAMBIA ESTO POR TU ID DE TELEGRAM
-
+async def admin_bono(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ No tienes acceso.")
+        return
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    # Dar 2000 oro a todos los jugadores actuales
+    c.execute("UPDATE personajes SET oro = oro + 2000")
+    
+    # Obtener lista para notificar
+    c.execute("SELECT user_id, nombre FROM personajes")
+    jugadores = c.fetchall()
+    
+    conn.commit()
+    conn.close()
+    
+    # Notificar a cada jugador
+    notificados = 0
+    for j in jugadores:
+        try:
+            await context.bot.send_message(
+                j[0],
+                "🎁 *¡BONUS DE FIDELIDAD!*\n\n"
+                "Gracias por ser de los primeros capitanes de la Frontera Estelar.\n"
+                "Has recibido *2000 de oro* adicionales.\n\n"
+                "¡Revisa tu balance con /stats!",
+                parse_mode='Markdown'
+            )
+            notificados += 1
+        except:
+            pass
+    
+    await update.message.reply_text(f"✅ Bono entregado a {notificados} jugadores.\nCada uno recibió 2000 de oro.")
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     
@@ -2554,6 +2590,7 @@ app.add_handler(CommandHandler("dar_oro", admin_dar_oro))
 app.add_handler(CallbackQueryHandler(pvp_atacar, pattern="pvp_atacar_"))
 app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
 app.add_handler(CommandHandler("referido", mi_referido))
+app.add_handler(CommandHandler("bono", admin_bono))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
