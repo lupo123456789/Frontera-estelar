@@ -5,6 +5,12 @@ import json
 def init_db():
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS referidos (
+    user_id INTEGER PRIMARY KEY,
+    codigo TEXT UNIQUE,
+    referidos_count INTEGER DEFAULT 0,
+    recompensas_ganadas REAL DEFAULT 0
+    )''')
     c.execute('''CREATE TABLE IF NOT EXISTS personajes (
         user_id INTEGER PRIMARY KEY,
         nombre TEXT,
@@ -87,6 +93,36 @@ TIPOS_NAVE = {
     "combate":    {"nombre": "Combate", "escudo": 120, "blindaje": 100, "armas": 3, "bodega": 5, "costo": 600},
     "hibrida":    {"nombre": "Hibrida", "escudo": 100, "blindaje": 70, "armas": 2, "bodega": 20, "costo": 800}
 }
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    args = context.args
+    
+    # Verificar si viene de un enlace de referido
+    if args and len(args) > 0:
+        codigo_ref = args[0]
+        conn = sqlite3.connect('estelar.db')
+        c = conn.cursor()
+        c.execute("SELECT user_id FROM referidos WHERE codigo=?", (codigo_ref,))
+        ref = c.fetchone()
+        if ref and ref[0] != user_id:
+            # Ver si ya fue referido
+            c.execute("SELECT * FROM referidos WHERE user_id=?", (user_id,))
+            if not c.fetchone():
+                # Es nuevo y viene de referido
+                c.execute("INSERT INTO referidos (user_id, codigo) VALUES (?, ?)", (user_id, generar_codigo(user_id)))
+                c.execute("UPDATE referidos SET referidos_count = referidos_count + 1 WHERE user_id=?", (ref[0],))
+                # Dar recompensa al que invitó
+                c.execute("UPDATE tokens SET balance = balance + 50, total_ganado = total_ganado + 50 WHERE user_id=?", (ref[0],))
+                c.execute("UPDATE referidos SET recompensas_ganadas = recompensas_ganadas + 50 WHERE user_id=?", (ref[0],))
+                conn.commit()
+                
+                try:
+                    await context.bot.send_message(ref[0], "🎉 ¡Alguien se unió con tu enlace! Has ganado *50 EST*.", parse_mode='Markdown')
+                except:
+                    pass
+        conn.close()
+    
+    # ... resto de la función start ...
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     
@@ -252,6 +288,14 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
     c.execute("INSERT INTO personajes (user_id, nombre, oficio) VALUES (?, ?, ?)", (user_id, nombre, oficio))
+# Dar 25 EST si vino de referido
+    c.execute("SELECT * FROM referidos WHERE user_id=?", (user_id,))
+if c.fetchone():
+    c.execute("SELECT * FROM tokens WHERE user_id=?", (user_id,))
+    if c.fetchone():
+        c.execute("UPDATE tokens SET balance = balance + 25, total_ganado = total_ganado + 25 WHERE user_id=?", (user_id,))
+    else:
+        c.execute("INSERT INTO tokens (user_id, balance, total_ganado) VALUES (?, 25, 25)", (user_id,))
     conn.commit()
     conn.close()
     
@@ -2409,7 +2453,41 @@ async def admin_dar_oro(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         await update.message.reply_text("Cantidad inválida.")
 app = ApplicationBuilder().token(TOKEN).build()
+# ============ SISTEMA DE REFERIDOS ============
+import hashlib
 
+def generar_codigo(user_id):
+    return hashlib.md5(str(user_id).encode()).hexdigest()[:8]
+
+async def mi_referido(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT codigo, referidos_count, recompensas_ganadas FROM referidos WHERE user_id=?", (user_id,))
+    ref = c.fetchone()
+    
+    if not ref:
+        codigo = generar_codigo(user_id)
+        c.execute("INSERT INTO referidos (user_id, codigo) VALUES (?, ?)", (user_id, codigo))
+        conn.commit()
+        ref = (codigo, 0, 0)
+    
+    conn.close()
+    
+    enlace = f"https://t.me/Imperiogalacticobot?start={ref[0]}"
+    
+    await update.message.reply_text(
+        f"🔗 *TU ENLACE DE REFERIDO*\n\n"
+        f"Comparte este enlace con tus amigos:\n"
+        f"`{enlace}`\n\n"
+        f"👥 Referidos: *{ref[1]}*\n"
+        f"🪙 Recompensas ganadas: *{ref[2]} EST*\n\n"
+        f"⚡ *Gana 50 EST* por cada amigo que cree su personaje.\n"
+        f"⚡ Tu amigo gana *25 EST* al empezar.",
+        parse_mode='Markdown'
+    )
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stats", stats))
 app.add_handler(CommandHandler("nave", nave_menu))
@@ -2469,6 +2547,7 @@ app.add_handler(CommandHandler("naves_admin", admin_naves))
 app.add_handler(CommandHandler("dar_oro", admin_dar_oro))
 app.add_handler(CallbackQueryHandler(pvp_atacar, pattern="pvp_atacar_"))
 app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
+app.add_handler(CommandHandler("referido", mi_referido))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
