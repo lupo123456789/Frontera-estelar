@@ -1322,8 +1322,8 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Posible encuentro PvP durante la expedición
     if sector_id != "high":
         asyncio.create_task(encuentro_pvp(user_id, context, sector_id, None))
-        asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
 
+    asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
 async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
