@@ -2083,7 +2083,7 @@ async def menu_ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("Usa los botones del menu para navegar.", reply_markup=teclado)
 
 async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Usa /start para ver el menu principal.
+    await update.message.reply_text("Usa /start para ver el menu principal.")
 import os
 TOKEN = os.environ.get("TOKEN", "8038564215:AAEDqfNqIEtFUMA4gLT4CJ_NwvKV3FrvVk8")
 app = ApplicationBuilder().token(TOKEN).build()
