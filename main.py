@@ -411,7 +411,18 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"  🔫 Armas: {nave_activa[7]}  |  📦 Bodega: {nave_activa[8]}\n\n"
     else:
         texto += "🛸 NAVE ACTIVA: Ninguna\n\n"
-    
+    # Mostrar armas equipadas
+    c.execute('''SELECT armas.nombre, armas.dano FROM nave_armas 
+                 JOIN armas ON nave_armas.arma_id = armas.id 
+                 WHERE nave_armas.nave_id=?''', (p[6],))
+    armas_equipadas = c.fetchall()
+    if armas_equipadas:
+        texto += "  🔫 Armas equipadas:\n"
+        dano_total = 0
+        for a in armas_equipadas:
+            texto += f"    • {a[0]} (+{a[1]} atk)\n"
+            dano_total += a[1]
+        texto += f"  ⚡ Ataque total: +{dano_total}\n"
     # Tripulación
     texto += "👥 TRIPULACIÓN:\n"
     texto += f"  {emoji_oficio.get(p[2], '')} {p[1]} ({p[2]}) - Capitán\n"
@@ -1502,7 +1513,24 @@ async def encuentro_pvp(user_id, context, sector_id, exp_data):
     
     poder_ataque = (stats_atacante["precision"] + stats_atacante["velocidad"]) if stats_atacante else 20
     poder_defensa = (stats_defensor["defensa"] + stats_defensor["precision"]) if stats_defensor else 20
-    
+    # Sumar daño de armas equipadas
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav = c.fetchone()
+    if nav and nav[0] > 0:
+        c.execute('''SELECT SUM(armas.dano) FROM nave_armas 
+                     JOIN armas ON nave_armas.arma_id = armas.id 
+                     WHERE nave_armas.nave_id=?''', (nav[0],))
+        dano = c.fetchone()[0] or 0
+        poder_ataque += dano
+    # Sumar daño de armas del defensor
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (objetivo_id,))
+    nav_def = c.fetchone()
+    if nav_def and nav_def[0] > 0:
+        c.execute('''SELECT SUM(armas.dano) FROM nave_armas 
+                     JOIN armas ON nave_armas.arma_id = armas.id 
+                     WHERE nave_armas.nave_id=?''', (nav_def[0],))
+        dano_def = c.fetchone()[0] or 0
+        poder_defensa += dano_def
     # Guardar encuentro pendiente
     if not hasattr(context, 'encuentros_pvp'):
         context.encuentros_pvp = {}
