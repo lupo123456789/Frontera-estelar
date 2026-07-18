@@ -852,7 +852,7 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
         for stat in ["precision", "defensa", "extraccion", "velocidad", "suerte"]:
             teclado.append([InlineKeyboardButton(
                 f"Mejorar {stat.capitalize()} (+1)",
-                callback_data=f"mejorar_{stat}"
+                callback_data=f"statup_{stat}"
             )])
     
     teclado.append([InlineKeyboardButton("Volver al menu", callback_data="volver_start")])
@@ -863,7 +863,7 @@ async def mejorar_stat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer(f"Mejorando...")
     user_id = query.from_user.id
-    stat = query.data.replace("mejorar_", "")
+    stat = query.data.replace("statup_", "")
 
     if stat not in ["precision", "defensa", "extraccion", "velocidad", "suerte"]:
         return
@@ -2572,7 +2572,7 @@ app.add_handler(CommandHandler("pool", info_pool))
 app.add_handler(CallbackQueryHandler(ver_tokens, pattern="menu_tokens"))
 app.add_handler(CommandHandler("stats_p", ver_stats_personaje))
 app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="menu_stats_p"))
-app.add_handler(CallbackQueryHandler(mejorar_stat, pattern="^mejorar_"))
+app.add_handler(CallbackQueryHandler(mejorar_stat, pattern="statup_"))
 app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CommandHandler("jugadores", admin_jugadores))
 app.add_handler(CommandHandler("naves_admin", admin_naves))
