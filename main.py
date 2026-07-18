@@ -96,7 +96,7 @@ TIPOS_NAVE = {
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     args = context.args
-    
+
     # Verificar si viene de un enlace de referido
     if args and len(args) > 0:
         codigo_ref = args[0]
@@ -105,27 +105,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c.execute("SELECT user_id FROM referidos WHERE codigo=?", (codigo_ref,))
         ref = c.fetchone()
         if ref and ref[0] != user_id:
-            # Ver si ya fue referido
             c.execute("SELECT * FROM referidos WHERE user_id=?", (user_id,))
             if not c.fetchone():
-                # Es nuevo y viene de referido
                 c.execute("INSERT INTO referidos (user_id, codigo) VALUES (?, ?)", (user_id, generar_codigo(user_id)))
                 c.execute("UPDATE referidos SET referidos_count = referidos_count + 1 WHERE user_id=?", (ref[0],))
-                # Dar recompensa al que invitó
                 c.execute("UPDATE tokens SET balance = balance + 50, total_ganado = total_ganado + 50 WHERE user_id=?", (ref[0],))
                 c.execute("UPDATE referidos SET recompensas_ganadas = recompensas_ganadas + 50 WHERE user_id=?", (ref[0],))
                 conn.commit()
-                
                 try:
                     await context.bot.send_message(ref[0], "🎉 ¡Alguien se unió con tu enlace! Has ganado *50 EST*.", parse_mode='Markdown')
                 except:
                     pass
         conn.close()
-    
-    # ... resto de la función start ...
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
     
