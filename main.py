@@ -341,6 +341,7 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("DEBUG: Entrando a stats")
     if update.callback_query:
         query = update.callback_query
         await query.answer()
