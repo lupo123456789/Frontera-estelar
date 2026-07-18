@@ -901,7 +901,26 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     if puntos > 0:
         texto += f"\n⭐ Puntos libres: {puntos}\n"
-    
+    # Mostrar nave activa y armas
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav_act = c.fetchone()
+    if nav_act and nav_act[0] > 0:
+        c.execute("SELECT nombre, tipo FROM naves WHERE id=?", (nav_act[0],))
+        nave = c.fetchone()
+        if nave:
+            texto += f"\n🛸 NAVE: {nave[0]} ({nave[1]})\n"
+            c.execute('''SELECT armas.nombre, armas.dano FROM nave_armas 
+                     JOIN armas ON nave_armas.arma_id = armas.id 
+                     WHERE nave_armas.nave_id=?''', (nav_act[0],))
+            armas = c.fetchall()
+            if armas:
+                dano_total = 0
+                for a in armas:
+                    texto += f"  🔫 {a[0]} (+{a[1]} atk)\n"
+                    dano_total += a[1]
+                texto += f"  ⚡ Ataque total: +{dano_total}\n"
+            else:
+                texto += "  🔫 Sin armas equipadas\n"
     teclado = []
     if puntos > 0:
         for stat in ["precision", "defensa", "extraccion", "velocidad", "suerte"]:
