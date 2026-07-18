@@ -251,7 +251,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if p:
         teclado = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Stats", callback_data="menu_stats")],
+            [InlineKeyboardButton("Stats", callback_data="stats")],
             [InlineKeyboardButton("Naves", callback_data="menu_nave")],
             [InlineKeyboardButton("Expediciones", callback_data="menu_exp")],
             [InlineKeyboardButton("Tablon", callback_data="menu_tablon")],
@@ -2368,7 +2368,7 @@ async def volver_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if p:
         teclado = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Stats", callback_data="menu_stats")],
+            [InlineKeyboardButton("Stats", callback_data="stats")],
             [InlineKeyboardButton("Naves", callback_data="menu_nave")],
             [InlineKeyboardButton("Tablon", callback_data="menu_tablon")],
             [InlineKeyboardButton("Tripulacion", callback_data="menu_trip")],
@@ -2884,7 +2884,7 @@ app.add_handler(CommandHandler("tokens", ver_tokens))
 app.add_handler(CommandHandler("pool", info_pool))
 app.add_handler(CallbackQueryHandler(ver_tokens, pattern="menu_tokens"))
 app.add_handler(CommandHandler("stats_p", ver_stats_personaje))
-app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="menu_stats_p"))
+app.add_handler(CallbackQueryHandler(stats, pattern="stats"))
 app.add_handler(CallbackQueryHandler(mejorar_stat, pattern="statup_"))
 app.add_handler(CommandHandler("admin", admin_panel))
 app.add_handler(CommandHandler("jugadores", admin_jugadores))
