@@ -834,6 +834,7 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
         s = c.fetchone()
     
     puntos = s[6]
+    print(f"DEBUG: puntos_libres={puntos}")
     conn.close()
     
     texto = f"📊 STATS DE {p[1].upper()}\n"
