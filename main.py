@@ -262,6 +262,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Ayuda", callback_data="menu_ayuda")],
             [InlineKeyboardButton("Reparar nave", callback_data="menu_reparar")],
             [InlineKeyboardButton("🔫 Mercado de Armas", callback_data="menu_mercado")],
+            [InlineKeyboardButton("🔧 Equipar Armas", callback_data="menu_equipar")],
         ])
         await update.message.reply_text(
             f"FRONTERA ESTELAR\n\nCapitan: {p[1]} ({p[2].capitalize()})\n\nElige una opcion:",
@@ -2348,6 +2349,7 @@ async def volver_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Expediciones", callback_data="menu_exp")],
             [InlineKeyboardButton("Tokens EST", callback_data="menu_tokens")],
             [InlineKeyboardButton("🔫 Mercado de Armas", callback_data="menu_mercado")],
+            [InlineKeyboardButton("🔧 Equipar Armas", callback_data="menu_equipar")],
         ])
         await query.edit_message_text(
             f"FRONTERA ESTELAR\n\nCapitan: {p[1]} ({p[2].capitalize()})\n\nElige una opcion:",
@@ -2863,6 +2865,7 @@ app.add_handler(CallbackQueryHandler(pvp_atacar, pattern="pvp_atacar_"))
 app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
 app.add_handler(CommandHandler("referido", mi_referido))
 app.add_handler(CommandHandler("bono", admin_bono))
+app.add_handler(CallbackQueryHandler(equipar_arma_menu, pattern="menu_equipar"))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
