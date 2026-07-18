@@ -391,7 +391,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
     
     teclado = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Mejorar stats", callback_data="statup_precision")],
+        [InlineKeyboardButton("Mejorar stats", callback_data="ver_stats_personaje")],
         [InlineKeyboardButton("Volver al menu", callback_data="volver_start")]
     ])
     
