@@ -862,7 +862,7 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def mejorar_stat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer(f"Mejorando...")
+    await query.answer(f"Stat: {stat}, Puntos: {puntos}", show_alert=True)
     print(f"DEBUG MEJORAR: user={user_id}, stat={stat}")
     await query.answer("FUNCIONA", show_alert=True)
     return
