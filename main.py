@@ -2622,6 +2622,7 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"📱 Acción recibida desde la Mini App: {accion}")
 
 app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="ver_stats_personaje"))
 print("Bot iniciado...")
 app.run_polling()
 
