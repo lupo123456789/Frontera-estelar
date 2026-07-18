@@ -861,36 +861,33 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def mejorar_stat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer(f"Stat: {stat}", show_alert=True)
-    return
-    await query.answer()
+    await query.answer(f"Mejorando...")
     user_id = query.from_user.id
     stat = query.data.replace("mejorar_", "")
-    
+
     if stat not in ["precision", "defensa", "extraccion", "velocidad", "suerte"]:
         return
-    
+
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
     c.execute("SELECT * FROM stats_personaje WHERE user_id=?", (user_id,))
     s = c.fetchone()
-    
+
     if not s:
         conn.close()
-        await query.edit_message_text("No tienes stats.")
         return
-    
+
     puntos = s[6]
     if puntos <= 0:
         conn.close()
-        await query.edit_message_text("No tienes puntos libres. Sube de nivel para conseguirlos.")
+        await query.answer("Sin puntos libres.", show_alert=True)
         return
-    
+
     c.execute(f"UPDATE stats_personaje SET {stat} = {stat} + 1, puntos_libres = puntos_libres - 1 WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
     
-    await query.answer(f"{stat.capitalize()} mejorado!")
+    await query.answer(f"{stat.capitalize()} mejorado!", show_alert=True)
     await ver_stats_personaje(update, context)
 # ============ SISTEMA DE EXPEDICIONES ============
 import random
