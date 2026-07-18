@@ -5,6 +5,25 @@ import json
 def init_db():
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS armas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT,
+    tipo TEXT,
+    dano INTEGER,
+    costo_est REAL
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS nave_armas (
+    nave_id INTEGER,
+    arma_id INTEGER,
+    FOREIGN KEY (nave_id) REFERENCES naves(id),
+    FOREIGN KEY (arma_id) REFERENCES armas(id)
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS inventario_armas (
+    user_id INTEGER,
+    arma_id INTEGER,
+    cantidad INTEGER DEFAULT 1,
+    FOREIGN KEY (arma_id) REFERENCES armas(id)
+    )''')
     c.execute('''CREATE TABLE IF NOT EXISTS referidos (
     user_id INTEGER PRIMARY KEY,
     codigo TEXT UNIQUE,
@@ -86,12 +105,33 @@ def init_db():
     conn.close()
 
 init_db()
+def insertar_armas():
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM armas")
+    if c.fetchone()[0] == 0:
+        armas = [
+            ("Laser basico", "ligera", 5, 10),
+            ("Canon ionico", "ligera", 8, 20),
+            ("Disruptor de pulso", "ligera", 10, 30),
+            ("Torreta laser", "media", 12, 35),
+            ("Canon magnetico", "media", 15, 50),
+            ("Rayo de protones", "media", 18, 65),
+            ("Canon de plasma", "grande", 22, 80),
+            ("Lanzamisiles", "grande", 28, 110),
+            ("Canon de antimateria", "grande", 35, 150)
+        ]
+        c.executemany("INSERT INTO armas (nombre, tipo, dano, costo_est) VALUES (?, ?, ?, ?)", armas)
+        conn.commit()
+    conn.close()
+
+insertar_armas()
 
 TIPOS_NAVE = {
-    "exploradora": {"nombre": "Exploradora", "escudo": 80, "blindaje": 40, "armas": 1, "bodega": 15, "costo": 300},
-    "minera":     {"nombre": "Minera", "escudo": 100, "blindaje": 60, "armas": 0, "bodega": 40, "costo": 400},
-    "combate":    {"nombre": "Combate", "escudo": 120, "blindaje": 100, "armas": 3, "bodega": 5, "costo": 600},
-    "hibrida":    {"nombre": "Hibrida", "escudo": 100, "blindaje": 70, "armas": 2, "bodega": 20, "costo": 800}
+    "exploradora": {"nombre": "Exploradora", "escudo": 80, "blindaje": 40, "armas": 1, "bodega": 15, "costo": 300, "ranuras": 2, "tipo_armas": ["ligera"]},
+    "minera":     {"nombre": "Minera", "escudo": 100, "blindaje": 60, "armas": 0, "bodega": 40, "costo": 400, "ranuras": 3, "tipo_armas": ["ligera", "media"]},
+    "combate":    {"nombre": "Combate", "escudo": 120, "blindaje": 100, "armas": 3, "bodega": 5, "costo": 600, "ranuras": 4, "tipo_armas": ["ligera", "media", "grande"]},
+    "hibrida":    {"nombre": "Hibrida", "escudo": 100, "blindaje": 70, "armas": 2, "bodega": 20, "costo": 800, "ranuras": 6, "tipo_armas": ["ligera", "media", "grande"]}
 }
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -221,6 +261,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Tokens EST", callback_data="menu_tokens")],
             [InlineKeyboardButton("Ayuda", callback_data="menu_ayuda")],
             [InlineKeyboardButton("Reparar nave", callback_data="menu_reparar")],
+            [InlineKeyboardButton("🔫 Mercado de Armas", callback_data="menu_mercado")],
         ])
         await update.message.reply_text(
             f"FRONTERA ESTELAR\n\nCapitan: {p[1]} ({p[2].capitalize()})\n\nElige una opcion:",
@@ -2306,6 +2347,7 @@ async def volver_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Ayuda", callback_data="menu_ayuda")],
             [InlineKeyboardButton("Expediciones", callback_data="menu_exp")],
             [InlineKeyboardButton("Tokens EST", callback_data="menu_tokens")],
+            [InlineKeyboardButton("🔫 Mercado de Armas", callback_data="menu_mercado")],
         ])
         await query.edit_message_text(
             f"FRONTERA ESTELAR\n\nCapitan: {p[1]} ({p[2].capitalize()})\n\nElige una opcion:",
@@ -2521,6 +2563,239 @@ async def mi_referido(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚡ Tu amigo gana *25 EST* al empezar.",
         parse_mode='Markdown'
     )
+    # ============ MERCADO DE ARMAS ============
+
+async def mercado_armas(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        user_id = query.from_user.id
+        mensaje = query.edit_message_text
+    else:
+        user_id = update.message.from_user.id
+        mensaje = update.message.reply_text
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT balance FROM tokens WHERE user_id=?", (user_id,))
+    t = c.fetchone()
+    est = t[0] if t else 0
+    
+    texto = f"🔫 MERCADO DE ARMAS\n\n"
+    texto += f"Tu balance: 🪙 {est} EST\n\n"
+    
+    teclado = []
+    
+    # Armas ligeras
+    texto += "🔹 LIGERAS:\n"
+    c.execute("SELECT id, nombre, dano, costo_est FROM armas WHERE tipo='ligera'")
+    for a in c.fetchall():
+        texto += f"  • {a[1]} | +{a[2]} atk | {a[3]} EST\n"
+        teclado.append([InlineKeyboardButton(f"Comprar {a[1]} ({a[3]} EST)", callback_data=f"comprar_arma_{a[0]}")])
+    
+    # Armas medias
+    texto += "\n🔸 MEDIAS:\n"
+    c.execute("SELECT id, nombre, dano, costo_est FROM armas WHERE tipo='media'")
+    for a in c.fetchall():
+        texto += f"  • {a[1]} | +{a[2]} atk | {a[3]} EST\n"
+        teclado.append([InlineKeyboardButton(f"Comprar {a[1]} ({a[3]} EST)", callback_data=f"comprar_arma_{a[0]}")])
+    
+    # Armas grandes
+    texto += "\n🔴 GRANDES:\n"
+    c.execute("SELECT id, nombre, dano, costo_est FROM armas WHERE tipo='grande'")
+    for a in c.fetchall():
+        texto += f"  • {a[1]} | +{a[2]} atk | {a[3]} EST\n"
+        teclado.append([InlineKeyboardButton(f"Comprar {a[1]} ({a[3]} EST)", callback_data=f"comprar_arma_{a[0]}")])
+    
+    conn.close()
+    
+    teclado.append([InlineKeyboardButton("Volver al menu", callback_data="volver_start")])
+    await mensaje(texto, reply_markup=InlineKeyboardMarkup(teclado))
+
+async def comprar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    arma_id = int(query.data.replace("comprar_arma_", ""))
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT balance FROM tokens WHERE user_id=?", (user_id,))
+    t = c.fetchone()
+    est = t[0] if t else 0
+    
+    c.execute("SELECT nombre, costo_est FROM armas WHERE id=?", (arma_id,))
+    arma = c.fetchone()
+    
+    if not arma:
+        conn.close()
+        await query.answer("Arma no encontrada.", show_alert=True)
+        return
+    
+    if est < arma[1]:
+        conn.close()
+        await query.answer(f"No tienes suficiente EST. Necesitas {arma[1]} EST.", show_alert=True)
+        return
+    
+    # Cobrar EST
+    c.execute("UPDATE tokens SET balance = balance - ? WHERE user_id=?", (arma[1], user_id))
+    
+    # Añadir al inventario
+    c.execute("SELECT * FROM inventario_armas WHERE user_id=? AND arma_id=?", (user_id, arma_id))
+    if c.fetchone():
+        c.execute("UPDATE inventario_armas SET cantidad = cantidad + 1 WHERE user_id=? AND arma_id=?", (user_id, arma_id))
+    else:
+        c.execute("INSERT INTO inventario_armas (user_id, arma_id) VALUES (?, ?)", (user_id, arma_id))
+    
+    conn.commit()
+    conn.close()
+    
+    await query.answer(f"Has comprado {arma[0]}!", show_alert=True)
+    await mercado_armas(update, context)
+
+
+async def mis_armas(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        user_id = query.from_user.id
+        mensaje = query.edit_message_text
+    else:
+        user_id = update.message.from_user.id
+        mensaje = update.message.reply_text
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute('''SELECT armas.id, armas.nombre, armas.tipo, armas.dano, inventario_armas.cantidad 
+                 FROM inventario_armas JOIN armas ON inventario_armas.arma_id = armas.id 
+                 WHERE inventario_armas.user_id=?''', (user_id,))
+    armas = c.fetchall()
+    conn.close()
+    
+    if not armas:
+        teclado = InlineKeyboardMarkup([[InlineKeyboardButton("🔫 Ir al mercado", callback_data="menu_mercado")],
+                                         [InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
+        await mensaje("No tienes armas en tu inventario.", reply_markup=teclado)
+        return
+    
+    texto = "🎒 TU ARSENAL:\n\n"
+    for a in armas:
+        texto += f"  • {a[1]} ({a[2]}) | +{a[3]} atk | x{a[4]}\n"
+    
+    teclado = InlineKeyboardMarkup([[InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
+    await mensaje(texto, reply_markup=teclado)
+
+
+async def equipar_arma_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        user_id = query.from_user.id
+        mensaje = query.edit_message_text
+    else:
+        user_id = update.message.from_user.id
+        mensaje = update.message.reply_text
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    p = c.fetchone()
+    if not p or p[0] == 0:
+        conn.close()
+        await mensaje("No tienes nave activa.")
+        return
+    
+    nave_id = p[0]
+    c.execute("SELECT nombre, tipo FROM naves WHERE id=?", (nave_id,))
+    nave = c.fetchone()
+    
+    # Armas disponibles en inventario
+    c.execute('''SELECT armas.id, armas.nombre, armas.tipo, armas.dano, inventario_armas.cantidad 
+                 FROM inventario_armas JOIN armas ON inventario_armas.arma_id = armas.id 
+                 WHERE inventario_armas.user_id=? AND inventario_armas.cantidad > 0''', (user_id,))
+    armas_inv = c.fetchall()
+    
+    # Armas ya equipadas
+    c.execute("SELECT COUNT(*) FROM nave_armas WHERE nave_id=?", (nave_id,))
+    equipadas = c.fetchone()[0]
+    
+    nave_data = TIPOS_NAVE.get(nave[1], {})
+    max_ranuras = nave_data.get("ranuras", 0)
+    tipos_permitidos = nave_data.get("tipo_armas", [])
+    
+    conn.close()
+    
+    texto = f"🔧 EQUIPAR ARMAS\n\n"
+    texto += f"Nave: {nave[0]} ({nave[1]})\n"
+    texto += f"Ranuras: {equipadas}/{max_ranuras}\n"
+    texto += f"Tipos permitidos: {', '.join(tipos_permitidos)}\n\n"
+    
+    if not armas_inv:
+        texto += "No tienes armas en tu inventario."
+        teclado = InlineKeyboardMarkup([[InlineKeyboardButton("🔫 Ir al mercado", callback_data="menu_mercado")],
+                                         [InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
+        await mensaje(texto, reply_markup=teclado)
+        return
+    
+    texto += "Armas disponibles:\n"
+    teclado = []
+    for a in armas_inv:
+        if a[2] in tipos_permitidos and equipadas < max_ranuras:
+            texto += f"  • {a[1]} ({a[2]}) | +{a[3]} atk\n"
+            teclado.append([InlineKeyboardButton(f"Equipar {a[1]}", callback_data=f"equipar_{a[0]}")])
+        else:
+            texto += f"  • {a[1]} ({a[2]}) | +{a[3]} atk | ❌ No compatible\n"
+    
+    teclado.append([InlineKeyboardButton("Volver al menu", callback_data="volver_start")])
+    await mensaje(texto, reply_markup=InlineKeyboardMarkup(teclado))
+
+
+async def equipar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    arma_id = int(query.data.replace("equipar_", ""))
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    p = c.fetchone()
+    nave_id = p[0]
+    
+    c.execute("SELECT tipo FROM naves WHERE id=?", (nave_id,))
+    nave = c.fetchone()
+    nave_data = TIPOS_NAVE.get(nave[0], {})
+    max_ranuras = nave_data.get("ranuras", 0)
+    tipos_permitidos = nave_data.get("tipo_armas", [])
+    
+    c.execute("SELECT tipo FROM armas WHERE id=?", (arma_id,))
+    arma = c.fetchone()
+    
+    if not arma or arma[0] not in tipos_permitidos:
+        conn.close()
+        await query.answer("Esta arma no es compatible con tu nave.", show_alert=True)
+        return
+    
+    c.execute("SELECT COUNT(*) FROM nave_armas WHERE nave_id=?", (nave_id,))
+    equipadas = c.fetchone()[0]
+    
+    if equipadas >= max_ranuras:
+        conn.close()
+        await query.answer(f"No tienes ranuras libres. Máximo: {max_ranuras}", show_alert=True)
+        return
+    
+    c.execute("INSERT INTO nave_armas (nave_id, arma_id) VALUES (?, ?)", (nave_id, arma_id))
+    c.execute("UPDATE inventario_armas SET cantidad = cantidad - 1 WHERE user_id=? AND arma_id=?", (user_id, arma_id))
+    
+    conn.commit()
+    conn.close()
+    
+    await query.answer("Arma equipada!", show_alert=True)
+    await equipar_arma_menu(update, context)
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stats", stats))
 app.add_handler(CommandHandler("nave", nave_menu))
@@ -2530,6 +2805,12 @@ app.add_handler(CommandHandler("tripulacion", ver_tripulacion))
 app.add_handler(CommandHandler("cancelar", cancelar_publicacion))
 app.add_handler(CommandHandler("ayuda", ayuda))
 
+app.add_handler(CommandHandler("mercado", mercado_armas))
+app.add_handler(CommandHandler("arsenal", mis_armas))
+app.add_handler(CommandHandler("equipar", equipar_arma_menu))
+app.add_handler(CallbackQueryHandler(mercado_armas, pattern="menu_mercado"))
+app.add_handler(CallbackQueryHandler(comprar_arma, pattern="comprar_arma_"))
+app.add_handler(CallbackQueryHandler(equipar_arma, pattern="equipar_"))
 app.add_handler(CallbackQueryHandler(oficios_info, pattern="oficios_info"))
 app.add_handler(CallbackQueryHandler(crear_menu, pattern="crear_menu"))
 app.add_handler(CallbackQueryHandler(crear_personaje, pattern="crear_piloto|crear_armero|crear_minero"))
