@@ -1323,7 +1323,7 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if sector_id != "high":
         asyncio.create_task(encuentro_pvp(user_id, context, sector_id, None))
 
-    asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
+    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, context))
 async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1417,7 +1417,7 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
         f"¡Esta es una oportunidad unica!"
     )
     
-    asyncio.create_task(finalizar_expedicion(user_id, tipo, context))
+    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, context))
 # ============ PVP EN EXPEDICIONES ============
 
 async def encuentro_pvp(user_id, context, sector_id, exp_data):
