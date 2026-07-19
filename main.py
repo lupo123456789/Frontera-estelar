@@ -2914,6 +2914,7 @@ app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
 app.add_handler(CommandHandler("referido", mi_referido))
 app.add_handler(CommandHandler("bono", admin_bono))
 app.add_handler(CallbackQueryHandler(equipar_arma_menu, pattern="menu_equipar"))
+app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="ver_stats_personaje"))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2951,7 +2952,6 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"📱 Acción recibida desde la Mini App: {accion}")
 
 app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="ver_stats_personaje"))
 print("Bot iniciado...")
 app.run_polling()
 
