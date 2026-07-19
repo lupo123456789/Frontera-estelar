@@ -356,7 +356,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     c.execute("SELECT * FROM personajes WHERE user_id=?", (user_id,))
     p = c.fetchone()
     if not p:
-        conn.close()
         await mensaje("No tienes personaje.")
         return
     # Tripulación
