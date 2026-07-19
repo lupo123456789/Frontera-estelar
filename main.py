@@ -1094,14 +1094,14 @@ async def expedicion_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         user_id = update.message.from_user.id
         mensaje = update.message.reply_text
-    
-    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
-    nav_act = c.fetchone()
+    conn_temp = sqlite3.connect('estelar.db')
+    c_temp = conn_temp.cursor()
+    c_temp.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav_act = c_temp.fetchone()
     nave_actual = nav_act[0] if nav_act else 0
+    conn_temp.close()
+
     if nave_actual in EXPEDICIONES_ACTIVAS:
-        c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
-        nav = c.fetchone()
-        nave_actual = nav[0] if nav else 0
         exp = EXPEDICIONES_ACTIVAS.get(nave_actual)
         restante = exp["fin"] - datetime.now()
         segundos = int(restante.total_seconds())
