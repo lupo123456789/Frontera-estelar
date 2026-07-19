@@ -2259,6 +2259,11 @@ async def unirme_a_nave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     await query.answer("DEBUG: Verificando...", show_alert=True)
     user_id = query.from_user.id
+    
+    anuncio_id = int(query.data.replace("unirme_", ""))
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
     # Verificar si ya está en una expedición
     c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
     nav_unir = c.fetchone()
@@ -2266,10 +2271,6 @@ async def unirme_a_nave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if nave_unirse in EXPEDICIONES_ACTIVAS:
         await query.answer("No puedes unirte a una nave mientras estás en expedición.", show_alert=True)
         return
-    anuncio_id = int(query.data.replace("unirme_", ""))
-    
-    conn = sqlite3.connect('estelar.db')
-    c = conn.cursor()
     c.execute("SELECT * FROM tablon WHERE id=? AND activo=1", (anuncio_id,))
     anuncio = c.fetchone()
     if not anuncio:
