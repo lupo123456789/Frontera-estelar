@@ -885,7 +885,7 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     puntos = s[6]
     print(f"DEBUG: puntos_libres={puntos}")
-    conn.close()
+    
     
     texto = f"📊 STATS DE {p[1].upper()}\n"
     texto += f"Oficio: {p[2].capitalize()} | Nivel: {p[3]}\n\n"
@@ -917,6 +917,7 @@ async def ver_stats_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE
                 texto += f"  ⚡ Ataque total: +{dano_total}\n"
             else:
                 texto += "  🔫 Sin armas equipadas\n"
+    conn.close()
     teclado = []
     if puntos > 0:
         for stat in ["precision", "defensa", "extraccion", "velocidad", "suerte"]:
