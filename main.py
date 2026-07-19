@@ -251,7 +251,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if p:
         teclado = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Stats", callback_data="ver_stats_personaje")],
+            [InlineKeyboardButton("Stats", callback_data="menu_stats")],
             [InlineKeyboardButton("Naves", callback_data="menu_nave")],
             [InlineKeyboardButton("Expediciones", callback_data="menu_exp")],
             [InlineKeyboardButton("Tablon", callback_data="menu_tablon")],
@@ -2383,7 +2383,7 @@ async def volver_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if p:
         teclado = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Stats", callback_data="ver_stats_personaje")],
+            [InlineKeyboardButton("Stats", callback_data="menu_stats")],
             [InlineKeyboardButton("Naves", callback_data="menu_nave")],
             [InlineKeyboardButton("Tablon", callback_data="menu_tablon")],
             [InlineKeyboardButton("Tripulacion", callback_data="menu_trip")],
