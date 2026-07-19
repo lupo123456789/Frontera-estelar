@@ -1285,13 +1285,6 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_id = query.from_user.id
     tipo = query.data.replace("exp_", "")
     
-    if tipo not in TIPOS_EXPEDICION:
-        return
-    
-    if nave_id in EXPEDICIONES_ACTIVAS:
-        await query.edit_message_text("Ya tienes una expedicion en curso.")
-        return
-    
     sector_id = context.user_data.get("sector_elegido", "high")
     sector = SECTORES[sector_id]
     datos = TIPOS_EXPEDICION[tipo]
@@ -1304,6 +1297,12 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     p = c.fetchone()
     mi_oficio = p[0]
     nave_id = p[1]
+    if tipo not in TIPOS_EXPEDICION:
+        return
+
+    if nave_id in EXPEDICIONES_ACTIVAS:
+        await query.edit_message_text("Ya tienes una expedicion en curso.")
+        return
     oro_actual = p[2]
     
     c.execute("SELECT oficio FROM tripulacion WHERE nave_id=?", (nave_id,))
@@ -1421,6 +1420,12 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
     p = c.fetchone()
     mi_oficio = p[0]
     nave_id = p[1]
+    if tipo not in TIPOS_EXPEDICION:
+        return
+
+    if nave_id in EXPEDICIONES_ACTIVAS:
+        await query.edit_message_text("Ya tienes una expedicion en curso.")
+        return
     oro_actual = p[2]
     
     c.execute("SELECT oficio FROM tripulacion WHERE nave_id=?", (nave_id,))
