@@ -341,6 +341,7 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("DEBUG STATS CALLED")
     if update.callback_query:
         query = update.callback_query
         await query.answer()
@@ -370,20 +371,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         texto += "  Sin tripulantes adicionales\n"
 
-    # Stats combinados si hay tripulación y nave
-    if nave_activa and trip:
-        stats_trip = obtener_stats_tripulacion(p[6], user_id)
-        bonus = stats_trip["bonus"]
-        texto += f"\n📊 STATS COMBINADOS:\n"
-        texto += f"  🎯 Precisión: {stats_trip['stats']['precision']} (+{bonus['exito']}% éxito)\n"
-        texto += f"  🛡️ Defensa: {stats_trip['stats']['defensa']} (-{bonus['defensa']*2}% daño)\n"
-        texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
-        texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
-        texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
-        conn.close()
-        await mensaje("No tienes personaje.")
-        return
-    
+
+
     c.execute("SELECT * FROM stats_personaje WHERE user_id=?", (user_id,))
     s = c.fetchone()
     if not s:
@@ -441,7 +430,17 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += "\n"
     else:
         texto += "🛸 NAVE ACTIVA: Ninguna\n\n"
-    
+    # Stats combinados si hay tripulación y nave
+    if nave_activa and trip:
+        stats_trip = obtener_stats_tripulacion(p[6], user_id)
+        bonus = stats_trip["bonus"]
+        texto += f"\n📊 STATS COMBINADOS:\n"
+        texto += f"  🎯 Precisión: {stats_trip['stats']['precision']} (+{bonus['exito']}% éxito)\n"
+        texto += f"  🛡️ Defensa: {stats_trip['stats']['defensa']} (-{bonus['defensa']*2}% daño)\n"
+        texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
+        texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
+        texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
+        
     conn.close()
     
     teclado = InlineKeyboardMarkup([
