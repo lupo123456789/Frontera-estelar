@@ -341,7 +341,6 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("DEBUG: Entrando a stats")
     if update.callback_query:
         query = update.callback_query
         await query.answer()
@@ -359,11 +358,34 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
         await mensaje("No tienes personaje.")
         return
+    # Tripulación
+    c.execute("SELECT tripulacion.oficio, personajes.nombre FROM tripulacion JOIN personajes ON tripulacion.user_id = personajes.user_id WHERE nave_id=?", (p[6],))
+    trip = c.fetchall()
+
+    texto += "👥 TRIPULACIÓN:\n"
+    texto += f"  {emoji_oficio.get(p[2], '')} {p[1]} ({p[2]}) - Capitán\n"
+    if trip:
+        for t in trip:
+            texto += f"  {emoji_oficio.get(t[0], '')} {t[1]} ({t[0]})\n"
+    else:
+        texto += "  Sin tripulantes adicionales\n"
+
+    # Stats combinados si hay tripulación y nave
+    if nave_activa and trip:
+        stats_trip = obtener_stats_tripulacion(p[6], user_id)
+        bonus = stats_trip["bonus"]
+        texto += f"\n📊 STATS COMBINADOS:\n"
+        texto += f"  🎯 Precisión: {stats_trip['stats']['precision']} (+{bonus['exito']}% éxito)\n"
+        texto += f"  🛡️ Defensa: {stats_trip['stats']['defensa']} (-{bonus['defensa']*2}% daño)\n"
+        texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
+        texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
+        texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
+        conn.close()
+        await mensaje("No tienes personaje.")
+        return
     
     c.execute("SELECT * FROM stats_personaje WHERE user_id=?", (user_id,))
     s = c.fetchone()
-    
-    # Si no tiene stats, crearlos
     if not s:
         base = STATS_BASE.get(p[2], STATS_BASE["piloto"])
         c.execute("INSERT INTO stats_personaje (user_id, precision, defensa, extraccion, velocidad, suerte) VALUES (?, ?, ?, ?, ?, ?)",
@@ -382,12 +404,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             nave_activa = n
             break
     
-    # Tripulación
-    c.execute("SELECT tripulacion.oficio, personajes.nombre FROM tripulacion JOIN personajes ON tripulacion.user_id = personajes.user_id WHERE nave_id=?", (p[6],))
-    trip = c.fetchall()
-    
-    conn.close()
-    
     emoji_oficio = {"piloto": "🛩️", "armero": "🔫", "minero": "⛏️"}
     
     texto = f"📊 PERFIL DE {p[1].upper()}\n\n"
@@ -395,64 +411,47 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto += f"⭐ Nivel: {p[3]} | ✨ EXP: {p[4]}/{p[3]*100}\n"
     texto += f"💰 Oro: {p[5]} | 🛸 Naves: {len(naves)}\n\n"
     
-    # Stats del personaje
     texto += "🎯 STATS DEL PERSONAJE:\n"
     texto += f"  🎯 Precisión: {s[1]}  |  🛡️ Defensa: {s[2]}\n"
     texto += f"  ⛏️ Extracción: {s[3]}  |  🚀 Velocidad: {s[4]}\n"
     texto += f"  🍀 Suerte: {s[5]}\n"
     if s[6] > 0:
-        texto += f"  ⭐ Puntos libres: {s[6]} (usa botón Mejorar Stats)\n"
+        texto += f"  ⭐ Puntos libres: {s[6]}\n"
     texto += "\n"
     
-    # Nave activa
+    # Nave activa y armas
     if nave_activa:
         texto += f"🛸 NAVE ACTIVA:\n"
         texto += f"  {nave_activa[2]} ({nave_activa[3]}) Nv.{nave_activa[4]}\n"
         texto += f"  🛡️ Escudo: {nave_activa[5]}  |  🔩 Blindaje: {nave_activa[6]}\n"
-        texto += f"  🔫 Armas: {nave_activa[7]}  |  📦 Bodega: {nave_activa[8]}\n\n"
+        
+        c.execute('''SELECT armas.nombre, armas.dano FROM nave_armas 
+                     JOIN armas ON nave_armas.arma_id = armas.id 
+                     WHERE nave_armas.nave_id=?''', (nave_activa[0],))
+        armas = c.fetchall()
+        if armas:
+            dano_total = 0
+            texto += "  🔫 Armas equipadas:\n"
+            for a in armas:
+                texto += f"    • {a[0]} (+{a[1]} atk)\n"
+                dano_total += a[1]
+            texto += f"  ⚡ Ataque total armas: +{dano_total}\n"
+        else:
+            texto += "  🔫 Sin armas equipadas\n"
+        texto += "\n"
     else:
         texto += "🛸 NAVE ACTIVA: Ninguna\n\n"
-    # Mostrar armas equipadas
-    c.execute('''SELECT armas.nombre, armas.dano FROM nave_armas 
-                 JOIN armas ON nave_armas.arma_id = armas.id 
-                 WHERE nave_armas.nave_id=?''', (p[6],))
-    armas_equipadas = c.fetchall()
-    if armas_equipadas:
-        texto += "  🔫 Armas equipadas:\n"
-        dano_total = 0
-        for a in armas_equipadas:
-            texto += f"    • {a[0]} (+{a[1]} atk)\n"
-            dano_total += a[1]
-        texto += f"  ⚡ Ataque total: +{dano_total}\n"
-    # Tripulación
-    texto += "👥 TRIPULACIÓN:\n"
-    texto += f"  {emoji_oficio.get(p[2], '')} {p[1]} ({p[2]}) - Capitán\n"
-    if trip:
-        for t in trip:
-            texto += f"  {emoji_oficio.get(t[0], '')} {t[1]} ({t[0]})\n"
-    else:
-        texto += "  Sin tripulantes adicionales\n"
     
-    # Si hay tripulación, mostrar stats combinados
-    if nave_activa and trip:
-        stats_trip = obtener_stats_tripulacion(p[6], user_id)
-        bonus = stats_trip["bonus"]
-        texto += f"\n📊 STATS COMBINADOS DE LA NAVE:\n"
-        texto += f"  🎯 Precisión: {stats_trip['stats']['precision']} (+{bonus['exito']}% éxito)\n"
-        texto += f"  🛡️ Defensa: {stats_trip['stats']['defensa']} (-{bonus['defensa']*2}% daño)\n"
-        texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
-        texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
-        texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
+    conn.close()
     
     teclado = InlineKeyboardMarkup([
         [InlineKeyboardButton("Mejorar stats", callback_data="ver_stats_personaje")],
+        [InlineKeyboardButton("🔧 Equipar Armas", callback_data="menu_equipar")],
         [InlineKeyboardButton("Volver al menu", callback_data="volver_start")]
     ])
     
-    try:
-            await mensaje(texto, reply_markup=teclado)
-    except:
-        pass
+    await mensaje(texto, reply_markup=teclado)
+
 async def ver_naves(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
