@@ -1095,12 +1095,18 @@ async def expedicion_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.message.from_user.id
         mensaje = update.message.reply_text
     
-    if user_id in EXPEDICIONES_ACTIVAS:
-        exp = EXPEDICIONES_ACTIVAS[user_id]
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav_act = c.fetchone()
+    nave_actual = nav_act[0] if nav_act else 0
+    if nave_actual in EXPEDICIONES_ACTIVAS:
+        c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+        nav = c.fetchone()
+        nave_actual = nav[0] if nav else 0
+        exp = EXPEDICIONES_ACTIVAS.get(nave_actual)
         restante = exp["fin"] - datetime.now()
         segundos = int(restante.total_seconds())
         if segundos <= 0:
-            EXPEDICIONES_ACTIVAS.pop(user_id)
+            EXPEDICIONES_ACTIVAS.pop(nave_actual)
         else:
             sector = SECTORES[exp["sector"]]
             teclado = InlineKeyboardMarkup([
@@ -1282,7 +1288,7 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if tipo not in TIPOS_EXPEDICION:
         return
     
-    if user_id in EXPEDICIONES_ACTIVAS:
+    if nave_id in EXPEDICIONES_ACTIVAS:
         await query.edit_message_text("Ya tienes una expedicion en curso.")
         return
     
@@ -1344,7 +1350,7 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     duracion = datos["duracion"]
     fin = datetime.now().timestamp() + duracion
     
-    EXPEDICIONES_ACTIVAS[user_id] = {
+    EXPEDICIONES_ACTIVAS[nave_id] = {
         "tipo": tipo,
         "tipo_nombre": datos["nombre"],
         "sector": sector_id,
@@ -1399,7 +1405,7 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
     if tipo not in EXPEDICIONES_RARAS:
         return
     
-    if user_id in EXPEDICIONES_ACTIVAS:
+    if nave_id in EXPEDICIONES_ACTIVAS:
         await query.edit_message_text("Ya tienes una expedicion en curso.")
         return
     
@@ -1455,7 +1461,7 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
     duracion = datos["duracion"]
     fin = datetime.now().timestamp() + duracion
     
-    EXPEDICIONES_ACTIVAS[user_id] = {
+    EXPEDICIONES_ACTIVAS[nave_id] = {
         "tipo": tipo,
         "tipo_nombre": datos["nombre"],
         "sector": sector_id,
@@ -1499,8 +1505,8 @@ async def encuentro_pvp(user_id, context, sector_id, exp_data):
     
     # Buscar otro jugador en expedición en el mismo sector
     posibles = []
-    for uid, exp in EXPEDICIONES_ACTIVAS.items():
-        if uid != user_id and exp["sector"] == sector_id:
+    for nid, exp in EXPEDICIONES_ACTIVAS.items():
+        if nid != nave_id and exp["sector"] == sector_id:
             posibles.append(uid)
     
     if not posibles:
@@ -1711,10 +1717,10 @@ async def finalizar_expedicion(user_id, tipo, context):
 
     await asyncio.sleep(datos["duracion"])
     print(f"DEBUG: Finalizando expedicion de user {user_id}, tipo {tipo}")
-    if user_id not in EXPEDICIONES_ACTIVAS:
+    if nave_id not in EXPEDICIONES_ACTIVAS:
         return
 
-    exp = EXPEDICIONES_ACTIVAS.pop(user_id)
+    exp = EXPEDICIONES_ACTIVAS.pop(nave_id)
     sector = SECTORES[exp["sector"]]
 
     tirada = random.randint(1, 100)
@@ -2026,8 +2032,11 @@ async def cancelar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
     user_id = query.from_user.id
     
-    if user_id in EXPEDICIONES_ACTIVAS:
-        exp = EXPEDICIONES_ACTIVAS.pop(user_id)
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav_cancel = c.fetchone()
+    nave_cancelar = nav_cancel[0] if nav_cancel else 0
+    if nave_cancelar in EXPEDICIONES_ACTIVAS:
+        exp = EXPEDICIONES_ACTIVAS.pop(nave_cancelar)
         
         # Devolver 50% del costo (en este caso perdemos la info del costo original)
         # Como no guardamos el costo, solo cancelamos sin devolución
@@ -2251,7 +2260,10 @@ async def unirme_a_nave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer("DEBUG: Verificando...", show_alert=True)
     user_id = query.from_user.id
     # Verificar si ya está en una expedición
-    if user_id in EXPEDICIONES_ACTIVAS:
+    c.execute("SELECT nave_activa FROM personajes WHERE user_id=?", (user_id,))
+    nav_unir = c.fetchone()
+    nave_unirse = nav_unir[0] if nav_unir else 0
+    if nave_unirse in EXPEDICIONES_ACTIVAS:
         await query.answer("No puedes unirte a una nave mientras estás en expedición.", show_alert=True)
         return
     anuncio_id = int(query.data.replace("unirme_", ""))
