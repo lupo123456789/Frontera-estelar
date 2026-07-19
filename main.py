@@ -2861,6 +2861,7 @@ app.add_handler(CallbackQueryHandler(oficios_info, pattern="oficios_info"))
 app.add_handler(CallbackQueryHandler(crear_menu, pattern="crear_menu"))
 app.add_handler(CallbackQueryHandler(crear_personaje, pattern="crear_piloto|crear_armero|crear_minero"))
 app.add_handler(CallbackQueryHandler(ver_naves, pattern="ver_naves"))
+app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="ver_stats_personaje"))
 app.add_handler(CallbackQueryHandler(comprar_nave_menu, pattern="comprar_nave"))
 app.add_handler(CallbackQueryHandler(comprar_nave, pattern="comprar_"))
 app.add_handler(CallbackQueryHandler(seleccionar_nave, pattern="sel_nave"))
@@ -2910,7 +2911,6 @@ app.add_handler(CallbackQueryHandler(pvp_ignorar, pattern="pvp_ignorar"))
 app.add_handler(CommandHandler("referido", mi_referido))
 app.add_handler(CommandHandler("bono", admin_bono))
 app.add_handler(CallbackQueryHandler(equipar_arma_menu, pattern="menu_equipar"))
-app.add_handler(CallbackQueryHandler(ver_stats_personaje, pattern="ver_stats_personaje"))
 from telegram import WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
