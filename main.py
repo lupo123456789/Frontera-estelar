@@ -399,7 +399,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"🛸 NAVE ACTIVA:\n"
         texto += f"  {nave_activa[2]} ({nave_activa[3]}) Nv.{nave_activa[4]}\n"
         texto += f"  🛡️ Escudo: {nave_activa[5]}  |  🔩 Blindaje: {nave_activa[6]}\n"
-
+        c.execute("SELECT dano FROM naves_dano WHERE nave_id=?", (nave_activa[0],))
+        dano_row = c.fetchone()
+        dano = dano_row[0] if dano_row else 0
+        texto += f"  🔧 Daño: {dano}%\n"
+        if dano > 0:
+            texto += f"  💰 Reparar: {dano * 5} oro\n"
         c.execute('''SELECT armas.nombre, armas.dano FROM nave_armas
                      JOIN armas ON nave_armas.arma_id = armas.id
                      WHERE nave_armas.nave_id=?''', (nave_activa[0],))
