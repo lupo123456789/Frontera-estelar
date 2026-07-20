@@ -2866,6 +2866,35 @@ async def equipar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.answer("Arma equipada!", show_alert=True)
     await equipar_arma_menu(update, context)
+def calcular_poder_jugador(user_id):
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    poder = 0
+    
+    c.execute("SELECT precision, defensa, velocidad, suerte FROM stats_personaje WHERE user_id=?", (user_id,))
+    s = c.fetchone()
+    if s:
+        poder += s[0] * 2  # precisión
+        poder += s[1] * 2  # defensa
+        poder += s[2] * 1  # velocidad
+        poder += s[3] * 1  # suerte
+    
+    c.execute("SELECT nivel FROM personajes WHERE user_id=?", (user_id,))
+    p = c.fetchone()
+    if p:
+        poder += p[0] * 5
+    
+    c.execute("SELECT id FROM naves WHERE dueno_id=?", (user_id,))
+    naves = c.fetchall()
+    for n in naves:
+        poder += 10
+        c.execute("SELECT SUM(armas.dano) FROM nave_armas JOIN armas ON nave_armas.arma_id = armas.id WHERE nave_armas.nave_id=?", (n[0],))
+        dano = c.fetchone()[0] or 0
+        poder += dano * 2
+    
+    conn.close()
+    return poder
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stats", stats))
 app.add_handler(CommandHandler("nave", nave_menu))
