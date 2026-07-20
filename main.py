@@ -3038,6 +3038,14 @@ async def corp_invitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def corp_unirse(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM corp_miembros WHERE user_id=?", (user_id,))
+    if c.fetchone():
+        conn.close()
+        await update.message.reply_text("Ya perteneces a una corporación. Usa /corp_salir primero.")
+        return
     args = context.args
     
     if not args:
@@ -3068,7 +3076,30 @@ async def corp_unirse(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
     
     await update.message.reply_text(f"Te has unido a {corp[1]} [{tag}]!")
-
+async def corp_salir(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT cm.corp_id, cm.rango, c.lider_id FROM corp_miembros cm JOIN corporaciones c ON cm.corp_id = c.id WHERE cm.user_id=?", (user_id,))
+    miembro = c.fetchone()
+    
+    if not miembro:
+        conn.close()
+        await update.message.reply_text("No perteneces a ninguna corporación.")
+        return
+    
+    if miembro[1] == "lider":
+        conn.close()
+        await update.message.reply_text("Eres líder. Transfiere el liderazgo o disuelve la corporación primero.")
+        return
+    
+    c.execute("DELETE FROM corp_miembros WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    await update.message.reply_text("Has salido de la corporación.")
 async def corp_donar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     args = context.args
@@ -3129,6 +3160,7 @@ async def corp_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"{i}. {c[0]} [{c[1]}] Nv.{c[2]} | 💰{c[3]}\n"
     
     await update.message.reply_text(texto)
+app.add_handler(CommandHandler("corp_salir", corp_salir))
 app.add_handler(CommandHandler("corp_crear", corp_crear))
 app.add_handler(CommandHandler("corp", corp_info))
 app.add_handler(CommandHandler("corp_unirse", corp_unirse))
