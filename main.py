@@ -339,6 +339,11 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=user_id, text=f"{nombre} - {oficio.capitalize()} creado.\nOro: 500")
     teclado = InlineKeyboardMarkup([[InlineKeyboardButton("Volver al menu", callback_data="volver_start")]])
     await query.edit_message_text("Preparate para la aventura!", reply_markup=teclado)
+def calcular_poder_jugador(user_id):
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+
+    poder = 0
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("DEBUG STATS CALLED")
     if update.callback_query:
@@ -2868,11 +2873,6 @@ async def equipar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.answer("Arma equipada!", show_alert=True)
     await equipar_arma_menu(update, context)
-def calcular_poder_jugador(user_id):
-    conn = sqlite3.connect('estelar.db')
-    c = conn.cursor()
-    
-    poder = 0
     
     c.execute("SELECT precision, defensa, velocidad, suerte FROM stats_personaje WHERE user_id=?", (user_id,))
     s = c.fetchone()
