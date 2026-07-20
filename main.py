@@ -1394,7 +1394,7 @@ async def iniciar_expedicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if sector_id != "high":
         asyncio.create_task(encuentro_pvp(user_id, context, sector_id, None))
 
-    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, context))
+    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, nave_id, context))
 async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1494,7 +1494,7 @@ async def iniciar_expedicion_rara(update: Update, context: ContextTypes.DEFAULT_
         f"¡Esta es una oportunidad unica!"
     )
     
-    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, context))
+    asyncio.ensure_future(finalizar_expedicion(user_id, tipo, nave_id, context))
 # ============ PVP EN EXPEDICIONES ============
 
 async def encuentro_pvp(user_id, context, sector_id, exp_data):
@@ -1712,7 +1712,7 @@ async def pvp_ignorar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         "🚶 Has decidido seguir de largo.\n\nTu expedición continúa sin interrupciones."
     )
-async def finalizar_expedicion(user_id, tipo, context):
+async def finalizar_expedicion(user_id, tipo, nave_id, context):
     if tipo in TIPOS_EXPEDICION:
         datos = TIPOS_EXPEDICION[tipo]
     elif tipo in EXPEDICIONES_RARAS:
