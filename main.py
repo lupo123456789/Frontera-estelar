@@ -3113,11 +3113,13 @@ async def corp_donar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     
     if len(args) < 2:
-        await update.message.reply_text("Uso: /corp_donar [oro/est] [cantidad]")
+        await update.message.reply_text("Uso: /corp_donar [oro/est/hierro/cobre/titanio/cristal] [cantidad]")
         return
     
     tipo = args[0].lower()
     cantidad = int(args[1])
+    
+    minerales_validos = ["hierro", "cobre", "titanio", "cristal"]
     
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
@@ -3147,6 +3149,19 @@ async def corp_donar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         c.execute("UPDATE tokens SET balance = balance - ? WHERE user_id=?", (cantidad, user_id))
         c.execute("UPDATE corporaciones SET est_banco = est_banco + ? WHERE id=?", (cantidad, miembro[0]))
+    elif tipo in minerales_validos:
+        c.execute("SELECT cantidad FROM inventario WHERE user_id=? AND recurso=?", (user_id, tipo.capitalize()))
+        inv = c.fetchone()
+        if not inv or inv[0] < cantidad:
+            conn.close()
+            await update.message.reply_text(f"No tienes suficiente {tipo}.")
+            return
+        c.execute("UPDATE inventario SET cantidad = cantidad - ? WHERE user_id=? AND recurso=?", (cantidad, user_id, tipo.capitalize()))
+        c.execute("UPDATE corporaciones SET est_banco = est_banco + ? WHERE id=?", (cantidad * 0.5, miembro[0]))
+    else:
+        conn.close()
+        await update.message.reply_text("Tipo no válido. Usa: oro, est, hierro, cobre, titanio, cristal")
+        return
     
     conn.commit()
     conn.close()
