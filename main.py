@@ -355,8 +355,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     c.execute("SELECT * FROM personajes WHERE user_id=?", (user_id,))
     p = c.fetchone()
     if not p:
-        poder = calcular_poder_jugador(user_id)
-        texto += f"\n⚡ Poder de Combate: {poder}\n"
         conn.close()
         await mensaje("No tienes personaje.")
         return
@@ -446,6 +444,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
         texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
         texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
+        poder = calcular_poder_jugador(user_id)
+        texto += f"\n⚡ Poder de Combate: {poder}\n"
 
     conn.close()
 
