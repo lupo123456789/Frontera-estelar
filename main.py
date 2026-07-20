@@ -12,6 +12,28 @@ def init_db():
     dano INTEGER,
     costo_est REAL
     )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS corporaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE,
+    tag TEXT UNIQUE,
+    lider_id INTEGER,
+    oro_banco INTEGER DEFAULT 0,
+    est_banco REAL DEFAULT 0,
+    nivel INTEGER DEFAULT 1
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS corp_miembros (
+    user_id INTEGER,
+    corp_id INTEGER,
+    rango TEXT DEFAULT "miembro"
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS corp_invitaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    corp_id INTEGER,
+    user_id INTEGER,
+    estado TEXT DEFAULT "pendiente"
+    )''')
     c.execute('''CREATE TABLE IF NOT EXISTS nave_armas (
     nave_id INTEGER,
     arma_id INTEGER,
@@ -2921,6 +2943,189 @@ async def equipar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     conn.close()
     return poder
+    # ============ SISTEMA DE CORPORACIONES ============
+
+async def corp_crear(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    args = context.args
+    
+    if len(args) < 2:
+        await update.message.reply_text("Uso: /corp_crear [nombre] [TAG] (ej: /corp_crear SpaceX SPX)")
+        return
+    
+    nombre = args[0]
+    tag = args[1].upper()
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT balance FROM tokens WHERE user_id=?", (user_id,))
+    t = c.fetchone()
+    est = t[0] if t else 0
+    
+    if est < 100:
+        conn.close()
+        await update.message.reply_text(f"Necesitas 100 EST para crear una corporación. Tienes {est} EST.")
+        return
+    
+    c.execute("SELECT * FROM corporaciones WHERE nombre=? OR tag=?", (nombre, tag))
+    if c.fetchone():
+        conn.close()
+        await update.message.reply_text("Ese nombre o TAG ya existe.")
+        return
+    
+    c.execute("UPDATE tokens SET balance = balance - 100 WHERE user_id=?", (user_id,))
+    c.execute("INSERT INTO corporaciones (nombre, tag, lider_id) VALUES (?, ?, ?)", (nombre, tag, user_id))
+    corp_id = c.lastrowid
+    c.execute("INSERT INTO corp_miembros (user_id, corp_id, rango) VALUES (?, ?, 'lider')", (user_id, corp_id))
+    conn.commit()
+    conn.close()
+    
+    await update.message.reply_text(f"🏢 ¡Corporación {nombre} [{tag}] creada!\nCosto: 100 EST\nEres el Líder.")
+
+async def corp_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute('''SELECT c.nombre, c.tag, c.nivel, c.oro_banco, c.est_banco, p.nombre 
+                 FROM corp_miembros cm 
+                 JOIN corporaciones c ON cm.corp_id = c.id 
+                 JOIN personajes p ON c.lider_id = p.user_id 
+                 WHERE cm.user_id=?''', (user_id,))
+    corp = c.fetchone()
+    
+    if not corp:
+        conn.close()
+        await update.message.reply_text("No perteneces a ninguna corporación. Crea una con /corp_crear")
+        return
+    
+    c.execute('''SELECT p.nombre, p.oficio, cm.rango, p.nivel 
+                 FROM corp_miembros cm 
+                 JOIN personajes p ON cm.user_id = p.user_id 
+                 WHERE cm.corp_id = (SELECT corp_id FROM corp_miembros WHERE user_id=?)''', (user_id,))
+    miembros = c.fetchall()
+    conn.close()
+    
+    texto = f"🏢 {corp[0]} [{corp[1]}]\n"
+    texto += f"⭐ Nivel: {corp[2]}\n"
+    texto += f"👑 Líder: {corp[5]}\n"
+    texto += f"💰 Banco: {corp[3]} oro | 🪙 {corp[4]} EST\n\n"
+    texto += "👥 MIEMBROS:\n"
+    for m in miembros:
+        emoji = {"lider": "👑", "oficial": "⭐", "miembro": "🔹"}
+        texto += f"  {emoji.get(m[2], '🔹')} {m[0]} ({m[1]}) Nv.{m[3]}\n"
+    
+    await update.message.reply_text(texto)
+
+async def corp_invitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    args = context.args
+    
+    if not args:
+        await update.message.reply_text("Uso: /corp_invitar @usuario")
+        return
+    
+    await update.message.reply_text("Sistema de invitación simplificado. Dile que use /corp_unirse [TAG]")
+
+async def corp_unirse(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    args = context.args
+    
+    if not args:
+        await update.message.reply_text("Uso: /corp_unirse [TAG]")
+        return
+    
+    tag = args[0].upper()
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT id, nombre, lider_id FROM corporaciones WHERE tag=?", (tag,))
+    corp = c.fetchone()
+    
+    if not corp:
+        conn.close()
+        await update.message.reply_text("Corporación no encontrada.")
+        return
+    
+    c.execute("SELECT * FROM corp_miembros WHERE user_id=?", (user_id,))
+    if c.fetchone():
+        conn.close()
+        await update.message.reply_text("Ya perteneces a una corporación.")
+        return
+    
+    c.execute("INSERT INTO corp_miembros (user_id, corp_id) VALUES (?, ?)", (user_id, corp[0]))
+    conn.commit()
+    conn.close()
+    
+    await update.message.reply_text(f"Te has unido a {corp[1]} [{tag}]!")
+
+async def corp_donar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    args = context.args
+    
+    if len(args) < 2:
+        await update.message.reply_text("Uso: /corp_donar [oro/est] [cantidad]")
+        return
+    
+    tipo = args[0].lower()
+    cantidad = int(args[1])
+    
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT corp_id FROM corp_miembros WHERE user_id=?", (user_id,))
+    miembro = c.fetchone()
+    if not miembro:
+        conn.close()
+        await update.message.reply_text("No perteneces a una corporación.")
+        return
+    
+    if tipo == "oro":
+        c.execute("SELECT oro FROM personajes WHERE user_id=?", (user_id,))
+        o = c.fetchone()
+        if o[0] < cantidad:
+            conn.close()
+            await update.message.reply_text("No tienes suficiente oro.")
+            return
+        c.execute("UPDATE personajes SET oro = oro - ? WHERE user_id=?", (cantidad, user_id))
+        c.execute("UPDATE corporaciones SET oro_banco = oro_banco + ? WHERE id=?", (cantidad, miembro[0]))
+    elif tipo == "est":
+        c.execute("SELECT balance FROM tokens WHERE user_id=?", (user_id,))
+        e = c.fetchone()
+        if e[0] < cantidad:
+            conn.close()
+            await update.message.reply_text("No tienes suficiente EST.")
+            return
+        c.execute("UPDATE tokens SET balance = balance - ? WHERE user_id=?", (cantidad, user_id))
+        c.execute("UPDATE corporaciones SET est_banco = est_banco + ? WHERE id=?", (cantidad, miembro[0]))
+    
+    conn.commit()
+    conn.close()
+    await update.message.reply_text(f"Has donado {cantidad} {tipo} a tu corporación.")
+
+async def corp_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT nombre, tag, nivel, oro_banco FROM corporaciones ORDER BY nivel DESC LIMIT 10")
+    corps = c.fetchall()
+    conn.close()
+    
+    if not corps:
+        await update.message.reply_text("No hay corporaciones aún.")
+        return
+    
+    texto = "🏆 RANKING DE CORPORACIONES\n\n"
+    for i, c in enumerate(corps, 1):
+        texto += f"{i}. {c[0]} [{c[1]}] Nv.{c[2]} | 💰{c[3]}\n"
+    
+    await update.message.reply_text(texto)
+app.add_handler(CommandHandler("corp_crear", corp_crear))
+app.add_handler(CommandHandler("corp", corp_info))
+app.add_handler(CommandHandler("corp_unirse", corp_unirse))
+app.add_handler(CommandHandler("corp_donar", corp_donar))
+app.add_handler(CommandHandler("corp_top", corp_ranking))
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stats", stats))
 app.add_handler(CommandHandler("nave", nave_menu))
