@@ -342,8 +342,32 @@ async def crear_personaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def calcular_poder_jugador(user_id):
     conn = sqlite3.connect('estelar.db')
     c = conn.cursor()
-
+    
     poder = 0
+    
+    c.execute("SELECT precision, defensa, velocidad, suerte FROM stats_personaje WHERE user_id=?", (user_id,))
+    s = c.fetchone()
+    if s:
+        poder += s[0] * 2
+        poder += s[1] * 2
+        poder += s[2] * 1
+        poder += s[3] * 1
+    
+    c.execute("SELECT nivel FROM personajes WHERE user_id=?", (user_id,))
+    p = c.fetchone()
+    if p:
+        poder += p[0] * 5
+    
+    c.execute("SELECT id FROM naves WHERE dueno_id=?", (user_id,))
+    naves = c.fetchall()
+    for n in naves:
+        poder += 10
+        c.execute("SELECT SUM(armas.dano) FROM nave_armas JOIN armas ON nave_armas.arma_id = armas.id WHERE nave_armas.nave_id=?", (n[0],))
+        dano = c.fetchone()[0] or 0
+        poder += dano * 2
+    
+    conn.close()
+    return poder
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("DEBUG STATS CALLED")
     if update.callback_query:
@@ -449,8 +473,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"  ⛏️ Extracción: {stats_trip['stats']['extraccion']} (+{bonus['extraccion']*2}% recursos)\n"
         texto += f"  🚀 Velocidad: {stats_trip['stats']['velocidad']} (-{bonus['velocidad']*2}s)\n"
         texto += f"  🍀 Suerte: {stats_trip['stats']['suerte']} (+{bonus['suerte']}% eventos)\n"
-        poder = calcular_poder_jugador(user_id)
-        texto += f"\n⚡ Poder de Combate: {poder}\n"
+    poder = calcular_poder_jugador(user_id)
+    texto += f"\n⚡ Poder de Combate: {poder}\n"
 
     conn.close()
 
