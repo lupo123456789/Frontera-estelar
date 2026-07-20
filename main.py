@@ -3072,6 +3072,14 @@ async def corp_unirse(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     c.execute("INSERT INTO corp_miembros (user_id, corp_id) VALUES (?, ?)", (user_id, corp[0]))
+    # Notificar al líder
+    try:
+        await context.bot.send_message(
+            corp[2],
+            f"🔹 Un nuevo miembro se ha unido a tu corporación {corp[1]}!"
+        )
+    except:
+        pass
     conn.commit()
     conn.close()
     
