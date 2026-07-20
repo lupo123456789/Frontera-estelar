@@ -2947,6 +2947,14 @@ async def equipar_arma(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def corp_crear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
+    conn = sqlite3.connect('estelar.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM corp_miembros WHERE user_id=?", (user_id,))
+    if c.fetchone():
+        conn.close()
+        await update.message.reply_text("Ya perteneces a una corporación.")
+        return
+    conn.close()
     args = context.args
     
     if len(args) < 2:
